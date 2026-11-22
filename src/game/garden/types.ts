@@ -1,5 +1,7 @@
 /** Cross-task garden domain — thin slice beside WorkSnapshot lawn cells. */
 
+import type { VisitSummary } from "@/game/learning/visitSummary";
+
 export type DebrisState = "scattered" | "gathered" | "bagged" | "acceptable";
 
 export interface WorldFootprint {
@@ -121,6 +123,8 @@ export interface PlantEntity {
   topCut: boolean;
   rootRemoved: boolean;
   ornamentalDamage: boolean;
+  /** If false, visible décor only — not counted as unfinished work. */
+  countsTowardCompletion?: boolean;
 }
 
 export interface DebrisEntity {
@@ -168,8 +172,8 @@ export interface EffortLedger {
 }
 
 export interface GardenDomain {
-  /** 1 = original V06; 2 = edge + cleanup history + visit */
-  schemaVersion: 1 | 2;
+  /** 1 = original V06; 2 = edge + cleanup; 3 = visitHistory + plant flags */
+  schemaVersion: 1 | 2 | 3;
   inspection: Record<string, { observed: boolean; effort: number }>;
   hazards: Record<string, HazardEntity>;
   hedgeClusters: Record<string, HedgeCluster>;
@@ -187,6 +191,8 @@ export interface GardenDomain {
   reviewOpen: boolean;
   visitFinished: boolean;
   lastVisitNote: string | null;
+  /** Sealed visit summaries (newest last); capped in store */
+  visitHistory: VisitSummary[];
 }
 
 export type GardenTaskId =

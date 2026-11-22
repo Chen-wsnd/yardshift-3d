@@ -25,6 +25,7 @@ import {
   gatherNearbyDebris,
 } from "@/game/garden/reducer";
 import type { GardenEvent } from "@/game/garden/types";
+import { buildVisitSummary } from "@/game/learning/visitSummary";
 import { guardAndConsumeTool } from "@/game/rules/toolUseGuard";
 import { applyWorkAction } from "@/game/work/engine";
 import { createFreshV02Snapshot, makeJobState } from "@/game/work/fixtures";
@@ -221,16 +222,28 @@ export const useGameStore = create<GameState>()(
             }
           }
         }
-        // Record productive mow effort once into garden domain (no double drain)
+        // Record productive mow effort from real sweep path length (sample-count stable)
         let garden = snap.garden ? migrateGardenDomain(snap.garden) : snap.garden;
-        if (garden && events.some((e) => e.kind === "progress")) {
+        const madeProgress = events.some((e) => e.kind === "progress");
+        if (garden && madeProgress) {
+          const samples = action.sweepSamples ?? [];
+          let pathLen = 0;
+          for (let i = 1; i < samples.length; i++) {
+            const a = samples[i - 1]!;
+            const b = samples[i]!;
+            pathLen += Math.hypot(b.x - a.x, b.z - a.z);
+          }
+          // Fallback: one short step if samples missing
+          if (pathLen < 0.05 && action.forwardMotion) pathLen = 0.35;
+          // Game-modeled effort units per metre of effective forward path
+          const effort = Math.min(2.5, Math.max(0.05, pathLen * 0.45));
           garden = applyGardenEvent(garden, {
             id: `mow:${action.strokeId ?? events[0]?.id}:${garden.events.length}`,
             type: "WORK_PERFORMED",
             taskId: "lawn",
             toolId: action.toolId,
             affectedIds: [],
-            effort: 0.35,
+            effort,
             worldFootprint: {
               x: action.worldX ?? 0,
               z: action.worldZ ?? 0,
@@ -238,6 +251,17 @@ export const useGameStore = create<GameState>()(
               areaId: "lawn",
             },
           });
+        } else if (garden && events.some((e) => e.kind === "ineffective")) {
+          // Cap empty-ground thrashing — no productive credit
+          if (garden.effort.ineffective < 4) {
+            garden = {
+              ...garden,
+              effort: {
+                ...garden.effort,
+                ineffective: Math.min(4, garden.effort.ineffective + 0.05),
+              },
+            };
+          }
         }
         set({ work: { ...snap, garden } });
         return events;
@@ -460,21 +484,42 @@ export const useGameStore = create<GameState>()(
       inspectObject: (objectId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        // Idempotent: re-inspecting the same object does not stack setup effort
+        if (work.garden.inspection[objectId]?.observed) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "inspect-repeat",
+                  kind: "progress",
+                  zoneId: "",
+                  toolId: "",
+                  explanation: `Already noted: ${objectId}.`,
+                },
+              ],
+            },
+          });
+          return;
+        }
         let garden = applyGardenEvent(work.garden, {
           id: `inspect:${objectId}`,
           type: "INSPECTED",
           objectId,
-          effort: 0.3,
+          effort: objectId === "garden-overview" ? 0.2 : 0.3,
         });
-        // Walking the yard reveals quieter spots (edge + hazard hotspots).
+        // Overview is a light scan — only task-level cues, not every hazard detail.
+        // Players still click individual hazards for specific risk info.
         if (objectId === "garden-overview") {
-          for (const id of ["hazard", "edge", ...Object.keys(garden.hazards)]) {
-            garden = applyGardenEvent(garden, {
-              id: `inspect:${id}`,
-              type: "INSPECTED",
-              objectId: id,
-              effort: 0.15,
-            });
+          for (const id of ["hazard", "edge"]) {
+            if (!garden.inspection[id]?.observed) {
+              garden = applyGardenEvent(garden, {
+                id: `inspect:${id}`,
+                type: "INSPECTED",
+                objectId: id,
+                effort: 0.1,
+              });
+            }
           }
         }
         set({
@@ -489,7 +534,7 @@ export const useGameStore = create<GameState>()(
                 toolId: "",
                 explanation:
                   objectId === "garden-overview"
-                    ? "You spotted a stone in the NW lawn and a quieter path edge. Hazards and edges are clearer now."
+                    ? "You notice a quieter path edge and that some lawn spots may hide stones — click specific hazards to learn more."
                     : `Inspected ${objectId}.`,
               },
             ],
@@ -613,27 +658,76 @@ export const useGameStore = create<GameState>()(
       pullWeed: (plantId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const toolId = work.selectedToolId ?? "hand-weeder";
+        if (toolId !== "hand-weeder") {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "pull-tool",
+                  kind: "ineffective",
+                  zoneId: "flowerbed",
+                  toolId,
+                  explanation:
+                    "Root removal needs the hand weeder — a trimmer only cuts tops.",
+                },
+              ],
+            },
+          });
+          return;
+        }
         const p = work.garden.plants[plantId];
         if (!p) return;
         if (p.kind === "flower") {
           get().damageFlower(plantId);
           return;
         }
+        const tool = work.tools[toolId];
+        if (!tool) return;
+        const guard = guardAndConsumeTool(tool, toolId, {
+          drain: false,
+          wear: true,
+        });
+        if (!guard.ok) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "pull-block",
+                  kind: "ineffective",
+                  zoneId: "flowerbed",
+                  toolId,
+                  explanation: guard.reason ?? "Tool cannot work.",
+                },
+              ],
+            },
+          });
+          return;
+        }
         set({
           work: {
             ...work,
+            tools: { ...work.tools, [toolId]: guard.tool },
             garden: applyGardenEvent(work.garden, {
               id: `pull:${plantId}`,
               type: "PLANT_ROOT_REMOVED",
               plantId,
               effort: 0.8,
+              worldFootprint: {
+                x: p.x,
+                z: p.z,
+                radius: 0.4,
+                areaId: "flowerbed",
+              },
             }),
             lastEvents: [
               {
                 id: "pull",
                 kind: "progress",
                 zoneId: "flowerbed",
-                toolId: "hand-weeder",
+                toolId,
                 explanation: "Weed pulled by the root. Debris left for cleanup.",
               },
             ],
@@ -644,27 +738,76 @@ export const useGameStore = create<GameState>()(
       topCutWeed: (plantId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const toolId = work.selectedToolId ?? "string-trimmer";
+        if (toolId !== "string-trimmer") {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "top-tool",
+                  kind: "ineffective",
+                  zoneId: "flowerbed",
+                  toolId,
+                  explanation:
+                    "Top-cutting needs the string trimmer. Use the hand weeder to pull roots.",
+                },
+              ],
+            },
+          });
+          return;
+        }
         const p = work.garden.plants[plantId];
         if (!p) return;
         if (p.kind === "flower") {
           get().damageFlower(plantId);
           return;
         }
+        const tool = work.tools[toolId];
+        if (!tool) return;
+        const guard = guardAndConsumeTool(tool, toolId, {
+          drain: true,
+          wear: true,
+        });
+        if (!guard.ok) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "top-block",
+                  kind: "not_powered",
+                  zoneId: "flowerbed",
+                  toolId,
+                  explanation: guard.reason ?? "Tool cannot work.",
+                },
+              ],
+            },
+          });
+          return;
+        }
         set({
           work: {
             ...work,
+            tools: { ...work.tools, [toolId]: guard.tool },
             garden: applyGardenEvent(work.garden, {
               id: `topcut:${plantId}`,
               type: "PLANT_TOP_CUT",
               plantId,
               effort: 0.3,
+              worldFootprint: {
+                x: p.x,
+                z: p.z,
+                radius: 0.5,
+                areaId: "flowerbed",
+              },
             }),
             lastEvents: [
               {
                 id: "topcut",
                 kind: "stubble",
                 zoneId: "flowerbed",
-                toolId: "string-trimmer",
+                toolId,
                 explanation:
                   "Tops cut — roots remain. The weed will need a proper pull later.",
               },
@@ -1009,16 +1152,24 @@ export const useGameStore = create<GameState>()(
       finishVisit: () => {
         const work = withGarden(get().work);
         if (!work.garden) return;
-        set({
-          work: {
-            ...work,
-            garden: applyGardenEvent(work.garden, {
-              id: `visit-finish:${work.garden.events.length}`,
-              type: "VISIT_FINISHED",
-              summaryNote: "Visit finished — compare effort and unfinished work.",
-            }),
-          },
+        const sealed = buildVisitSummary(
+          work.garden,
+          work,
+          `visit:${(work.garden.visitHistory ?? []).length}:${work.garden.events.length}`,
+        );
+        let garden = applyGardenEvent(work.garden, {
+          id: `visit-finish:${work.garden.events.length}`,
+          type: "VISIT_FINISHED",
+          summaryNote: `Sealed ${sealed.qualityBand} visit (${Math.round(sealed.final.lawnPct)}% lawn / ${Math.round(sealed.final.edgePct)}% edge).`,
         });
+        const history = [...(garden.visitHistory ?? []), sealed].slice(-3);
+        garden = {
+          ...garden,
+          visitHistory: history,
+          lastVisitNote: sealed.qualityBand,
+          reviewOpen: true,
+        };
+        set({ work: { ...work, garden } });
       },
 
       finishJob: (early) => {

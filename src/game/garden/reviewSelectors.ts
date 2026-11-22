@@ -1,6 +1,7 @@
 import { LAWN_ZONE_ID } from "@/data/lawnGrid";
 import { V03_GARDEN_JOB_ID } from "@/game/work/gardenFixtures";
 import type { WorkSnapshot } from "@/game/work/types";
+import { buildLearningAdvice } from "@/game/learning/learningAdvice";
 import { countPotentialRedirty } from "./spatialRework";
 import type { GardenDomain } from "./types";
 
@@ -14,6 +15,7 @@ export interface ReviewSummary {
   qualityNotes: string[];
   reworkNotes: string[];
   completionNotes: string[];
+  learningAdvice: { text: string; eventId?: string; areaId?: string }[];
   unresolvedHazards: number;
   uncutHedge: number;
   looseDebris: number;
@@ -23,6 +25,7 @@ export interface ReviewSummary {
   edgeFinishedPct: number;
   canFinishWell: boolean;
   potentialRedirty: number;
+  qualityBand: "incomplete" | "acceptable" | "needs-attention";
 }
 
 function lawnFinishedPct(work: WorkSnapshot | undefined): number {
@@ -30,14 +33,16 @@ function lawnFinishedPct(work: WorkSnapshot | undefined): number {
   const job = work.jobs[V03_GARDEN_JOB_ID];
   const lawn = job?.zones.find((z) => z.id === LAWN_ZONE_ID);
   if (!lawn || lawn.cells.length === 0) return 0;
-  const done = lawn.cells.filter(
+  // Do not count protected flower cells as "mowed progress" for finish %
+  const mowable = lawn.cells.filter((c) => c.protectedKind !== "flower");
+  if (mowable.length === 0) return 100;
+  const done = mowable.filter(
     (c) =>
-      c.protectedKind === "flower" ||
       c.remainingWork <= 0 ||
       c.result === "finished" ||
       c.result === "scalped",
   ).length;
-  return (done / lawn.cells.length) * 100;
+  return (done / mowable.length) * 100;
 }
 
 function edgeFinishedPct(domain: GardenDomain): number {
@@ -47,10 +52,13 @@ function edgeFinishedPct(domain: GardenDomain): number {
   return (done / segs.length) * 100;
 }
 
+function counts(p: { countsTowardCompletion?: boolean }) {
+  return p.countsTowardCompletion !== false;
+}
+
 /**
  * Derive review from real events + WorkSnapshot.
- * Rework effort comes only from cleanup actions marked isRework (same footprint
- * cleaned, then re-dirtied, then cleaned again) — never from plan order.
+ * Rework effort comes only from cleanup actions marked isRework.
  */
 export function buildReviewSummary(
   domain: GardenDomain,
@@ -71,7 +79,7 @@ export function buildReviewSummary(
     (d) => d.state === "scattered" || d.state === "gathered",
   ).length;
   const weedsWithRoots = Object.values(domain.plants).filter(
-    (p) => p.kind === "weed" && !p.rootRemoved,
+    (p) => p.kind === "weed" && !p.rootRemoved && counts(p),
   ).length;
   const damagedFlowers = Object.values(domain.plants).filter(
     (p) => p.kind === "flower" && p.ornamentalDamage,
@@ -121,11 +129,16 @@ export function buildReviewSummary(
 
   const canFinishWell =
     unresolvedHazards === 0 &&
+    damagedFlowers === 0 &&
     lawnPct >= 70 &&
     edgePct >= 50 &&
     uncutHedge <= 2 &&
     weedsWithRoots <= 1 &&
     looseDebris <= 4;
+
+  let qualityBand: ReviewSummary["qualityBand"] = "incomplete";
+  if (damagedFlowers > 0 || unresolvedHazards > 0) qualityBand = "needs-attention";
+  else if (canFinishWell) qualityBand = "acceptable";
 
   return {
     productive: e.productive,
@@ -137,6 +150,12 @@ export function buildReviewSummary(
     qualityNotes,
     reworkNotes,
     completionNotes,
+    learningAdvice: buildLearningAdvice(domain, {
+      weedsWithRoots,
+      lawnFinishedPct: lawnPct,
+      edgeFinishedPct: edgePct,
+      unresolvedHazards,
+    }),
     unresolvedHazards,
     uncutHedge,
     looseDebris,
@@ -146,5 +165,6 @@ export function buildReviewSummary(
     edgeFinishedPct: edgePct,
     canFinishWell,
     potentialRedirty: redirt.count,
+    qualityBand,
   };
 }

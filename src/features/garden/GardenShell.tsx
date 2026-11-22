@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
-import { getGardenTask, GARDEN_TASKS } from "@/data/gardenTasks";
+import { EQUIPMENT_PROFILES } from "@/data/equipmentProfiles";
+import { getGardenTask } from "@/data/gardenTasks";
 import { LAWN_ZONE_ID } from "@/data/lawnGrid";
+import { getToolKnowledge } from "@/game/learning/toolKnowledge";
 import { useGameStore } from "@/game/store/gameStore";
 import { WorkConfirm } from "./WorkConfirm";
 import { WorkPlanPanel } from "./WorkPlanPanel";
@@ -175,19 +177,22 @@ export function GardenShell() {
           </div>
 
           <WorkConfirm
+            key={pendingTaskId ?? "none"}
             open={Boolean(pendingTask) && !activeTaskId}
             title={pendingTask?.prompt ?? "Start work?"}
             body={pendingTask?.strengthsLimits}
             toolIds={pendingTask?.tools}
+            preferredToolId={null}
             onCancel={() => setPendingTaskId(null)}
-            onConfirm={() => {
+            onConfirm={(toolId) => {
               if (!pendingTaskId) return;
               const task = getGardenTask(pendingTaskId);
               if (pendingTaskId === "debris" && task) {
                 setFocusPoint({ x: task.center[0], z: task.center[2] });
               }
               setActiveGardenTask(pendingTaskId);
-              if (task?.tools[0]) selectTool(task.tools[0]);
+              if (toolId) selectTool(toolId);
+              else if (task?.tools[0]) selectTool(task.tools[0]);
               setPendingTaskId(null);
             }}
           />
@@ -201,14 +206,8 @@ export function GardenShell() {
                 <>
                   {toolChoices.map((toolId) => {
                     const t = work.tools[toolId];
-                    const label =
-                      GARDEN_TASKS.find((x) => x.id === activeTaskId)
-                        ?.tools.includes(toolId)
-                        ? toolId
-                            .split("-")
-                            .map((w) => w[0]?.toUpperCase() + w.slice(1))
-                            .join(" ")
-                        : toolId;
+                    const profile = EQUIPMENT_PROFILES.find((p) => p.id === toolId);
+                    const label = profile?.name ?? toolId;
                     const bat =
                       t &&
                       (t.resourceType === "battery" ||
@@ -219,6 +218,7 @@ export function GardenShell() {
                       <button
                         key={toolId}
                         type="button"
+                        title={profile?.description}
                         className={`rounded-md px-3 py-1.5 ${
                           work.selectedToolId === toolId
                             ? "bg-emerald-800 text-white"
@@ -260,6 +260,12 @@ export function GardenShell() {
             </div>
           </div>
 
+          {activeTaskId && work.selectedToolId ? (
+            <div className="pointer-events-none absolute bottom-16 left-3 z-10 max-w-xs rounded-md bg-white/90 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200">
+              {getToolKnowledge(work.selectedToolId)?.effectToWatch ??
+                "Watch how this tool changes the yard."}
+            </div>
+          ) : null}
           {event ? (
             <div
               className="pointer-events-none absolute left-3 top-14 z-10 max-w-sm rounded-md bg-emerald-50/95 px-3 py-2 text-sm text-emerald-950 ring-1 ring-emerald-200"

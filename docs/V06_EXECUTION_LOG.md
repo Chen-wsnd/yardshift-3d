@@ -1,80 +1,88 @@
 # YardShift v0.6 Execution Log
 
-**Branch:** `feature/v06-experience-completion`  
-**Baseline:** `feature/v06-yardshift-full-experience` @ `f19b6c1`  
+**Branch:** `feature/v06-professional-learning-loop`  
+**Baseline:** `feature/v06-experience-completion` @ `e4bf150`  
 **Spec:** `docs/YARDSHIFT_V06_SINGLE_MASTER_CURSOR_SPEC.md`  
-**Guidance:** `docs/YARDSHIFT_V06_INTEGRATED_PRODUCT_IMPROVEMENT_GUIDANCE.md`  
-**Atlas:** `docs/YARDSHIFT_V06_IMPLEMENTATION_ATLAS_AND_RECOVERY_ADDENDUM.md`
+**Learning contract:** `docs/YARDSHIFT_V06_PROFESSIONAL_TOOL_JUDGMENT_LEARNING_EXECUTION.md`  
+**Prior wave:** `docs/YARDSHIFT_V06_INTEGRATED_PRODUCT_IMPROVEMENT_GUIDANCE.md` (historical; do not re-fix R01–R11 as if missing)
 
-## Recovery / protection
+## Protection
 
 | Item | Value |
 |---|---|
-| External backup (M0–M6) | `/Users/junhanchen/Desktop/yardshift-v06-recovery-20261122-154430` |
-| External backup (M7 WIP) | `/Users/junhanchen/Desktop/yardshift-v06-recovery-m7-20261122-155540` |
-| Prior delivery HEAD | `f19b6c1` on `feature/v06-yardshift-full-experience` |
-| This wave branch | `feature/v06-experience-completion` (from `f19b6c1`) |
+| Prior delivery | `e4bf150` on `feature/v06-experience-completion` |
+| This wave branch | `feature/v06-professional-learning-loop` |
+| Persist key | `yardshift-v03` (not cleared) |
 
-## Wave W0–W5 (integrated product improvement)
+## Wave A–E (professional tool judgment)
 
-| Wave | Status | Focus |
+| Wave | Status | Result |
 |---|---|---|
-| W0 | DONE | Protect WIP, branch from `f19b6c1`, copy guidance into `docs/` |
-| W1 | DONE | Entry/overview/hotspots/plan/inspect coherence; focusPoint; Finish visit |
-| W2 | DONE | Kit GLB tool views via `GardenToolView`; task stages wired |
-| W3 | DONE | Yard-wide debris, spatial rework vs potential redirty, independent edge |
-| W4 | DONE | Review learning loop (potential vs spent rework), ToolUseGuard lifecycle |
-| W5 | DONE | T01–T30 sample coverage, typecheck/lint/test/build, evidence, push feature |
+| A | DONE | Branched from `e4bf150`, contract copied, baseline 97 tests green |
+| B | DONE | `toolKnowledge.ts`; store guards on pull/topCut; honest edger/weeder silhouettes; operable completion weeds |
+| C | DONE | Path-length mow effort; `VisitSummary` + compare; event-backed learning advice; Inspect idempotent |
+| D | DONE | WorkConfirm explicit tool choice; Review A/B; Finish seals qualityBand; retry keeps history |
+| E | DONE | J-matrix tests, typecheck/lint/test/build, browser evidence, push feature |
 
-## R01–R14 closure (priority)
+## Gap closure (A–H from learning contract)
 
-| ID | Status | Implementation |
-|---|---|---|
-| R01 yard-wide debris | DONE | SW path + east-hedge litter fixtures; click debris → focus + task |
-| R02 spatial rework | DONE | `spatialRework.ts` — spent rework only on second cleanup of same footprint |
-| R03 independent edge | DONE | `edgeSegments` + `edgeFixtures`; review edge % separate from lawn |
-| R04 ToolUseGuard | DONE | `toolUseGuard.ts` + store `guardAndConsumeTool` on powered actions |
-| R05 whole-yard review | DONE | `reviewSelectors` edge + potentialRedirty + Finish visit |
-| R06 kit GLBs in-hand | DONE | `GardenToolView` mounts CC0 kit tools in hedge/debris/edge/flowerbed |
-| R07–R11 UX polish | DONE | Hotspots Html, Confirm/Plan/Shell Finish visit, Orbit focus on debris |
-| R12–R14 residual | OPEN (P2) | Cosmetic framing, hazard rock GLB, audio — non-blocking |
+| Gap | Status |
+|---|---|
+| A wrong tool models | DONE — procedural hand-edger / hand-weeder (J27) |
+| B flowerbed store guards | DONE — ToolUseGuard on topCut/pull (J09–J11) |
+| C Finish → VisitSummary | DONE — sealed history + compare (J21–J24) |
+| D mow effort vs samples | DONE — path-length based productive effort |
+| E professional vs finish | DONE — qualityBand; damage blocks “acceptable” |
+| F choose-then-act | DONE — WorkConfirm tool picker + knowledge blurbs |
+| G visible≠touchable weeds | DONE — completion weeds relocated to operable bed (J12) |
+| H browser continuity | DONE — representative evidence below |
 
-## Milestone carry-forward (M0–M7)
-
-Prior M0–M7 objective delivery at `f19b6c1` remains; this wave does **not** change L0 core loop — it closes experience gaps on that baseline.
-
-## Engineering verification (this machine)
+## Engineering verification
 
 ```
 npm run typecheck  → pass
 npm run lint       → pass
-npm run test       → 97 passed (16 files)
+npm run test       → 112 passed (17 files)
 npm run build      → pass
 ```
 
-## Placement
+## Evidence
 
-- Script: `node scripts/inspectGardenScene.mjs`
-- Audit: `docs/v06-scene-placement-audit.json` (MEASURED)
-- Map: `docs/v06-scene-placement-map.md`
-- Registry: `src/data/gardenPlacement.ts`
+- `docs/v06-evidence/01-overview-initial.png` (prior)
+- `docs/v06-evidence/03-experience-overview.png` (prior)
+- `docs/v06-evidence/04-experience-review.png` (prior)
+- `docs/v06-evidence/05-learning-review-advice.png` — qualityBand + event-backed advice
+- `docs/v06-evidence/06-learning-visit-compare.png` — sealed Visit summary + A/B section
+- WorkConfirm tool picker: CODE_CONFIRMED in `WorkConfirm.tsx` (browser hotspot click flaky under automation)
 
-## Representative browser evidence
+## HUMAN_REVIEW (not auto-passed)
 
-- `docs/v06-evidence/01-overview-initial.png`
-- `docs/v06-evidence/02-inspect-hazard.png`
-- `docs/v06-evidence/03-experience-overview.png` — overview + Finish visit + yard status
-- `docs/v06-evidence/04-experience-review.png` — Work review shows Edge ≠ Lawn, spent rework, Finish visit
-- Objective pass criteria: Vitest matrix + domain/spatial/edge/lifecycle tests (not screenshots)
+| Item | Status |
+|---|---|
+| First 30–60s discoverability | NOT_TESTED |
+| Tool judgment after play | NOT_TESTED |
+| Process causality understanding | NOT_TESTED |
+| Same-yard transfer on retry | NOT_TESTED |
+
+## Suggested 5–8 min owner script
+
+1. Overview → Inspect once → note path edge / hazard cues (not every hazard auto-known).
+2. Enter hedge → explicitly pick shears vs powered trimmer → cut one cluster → see clippings.
+3. Debris → rake/bag near east; optionally cut again and re-clean for spent rework.
+4. Edge after mowing — confirm edge % separate.
+5. Flowerbed — string trimmer tops vs hand weeder roots; avoid flowers.
+6. Finish visit early → read qualityBand + advice with event ids.
+7. Try again (same yard) → change one choice → Finish → read A/B compare.
 
 ## Non-blocking backlog
 
 | Priority | Item |
 |---|---|
-| P2 cosmetic | Debris camera can still feel patio-heavy on some angles |
-| P2 cosmetic | Hazard stone remains overlay (no rock in starter GLB) |
+| P2 | J02–J05 full path-length matrix across sample densities (partial via code) |
+| P2 | Hazard rock GLB; debris camera framing |
 | P3 | Audio, wind grass, brand tool cards |
+| P3 | FPS measurement — NOT_MEASURED |
 
 ## Git policy
 
-- Push **feature only** (`feature/v06-experience-completion`); do **not** merge main; do **not** deploy.
+- Push **feature only**; do **not** merge main; do **not** deploy; do **not** wipe `yardshift-v03` saves.

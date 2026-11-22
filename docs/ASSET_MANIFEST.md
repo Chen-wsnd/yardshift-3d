@@ -1,6 +1,6 @@
 # YardShift Asset Manifest
 
-Updated: 2026-11-22 — `feature/v06-experience-completion` (from `f19b6c1`)
+Updated: 2026-11-22 — `feature/v06-professional-learning-loop` (from `e4bf150`)
 
 Status legend: `IN_REPO` · `ACTUALLY_USED` · `REFER_ONLY` · `CANDIDATE`
 
@@ -25,13 +25,16 @@ Pack: https://3dassets.dev/packs/lawn-mowing-simulator-kit
 | hedge-block.glb | Hedge overgrowth overlays on east hedge | ACTUALLY_USED |
 | dandelion.glb | Weed overlays (measured clump positions) | ACTUALLY_USED |
 | flower-bed-border.glb | Kit prop; scene nodes 115/116 locate flowerbed | IN_REPO (scene nodes used) |
-| hedge-trimmer.glb / garden-shears.glb | In-hand via `GardenToolView` (hedge/flowerbed) | ACTUALLY_USED |
+| hedge-trimmer.glb / garden-shears.glb | In-hand via `GardenToolView` (hedge) | ACTUALLY_USED |
 | leaf-rake.glb / leaf-blower.glb / grass-bag.glb | In-hand via `GardenToolView` (debris) | ACTUALLY_USED |
-| string-trimmer.glb | In-hand via `GardenToolView` (edge / top-cut) | ACTUALLY_USED |
+| string-trimmer.glb | In-hand via `GardenToolView` (edge / top-cut only) | ACTUALLY_USED |
 | picket-fence.glb / patio-chair.glb | Kit ambience via starter scene | ACTUALLY_USED (in starter) |
+| hand-edger (procedural) | Distinct half-moon blade silhouette — **not** string-trimmer GLB | ACTUALLY_USED (code) |
+| hand-weeder (procedural) | Distinct forked blade silhouette — **not** garden-shears GLB | ACTUALLY_USED (code) |
 
 Registry: `src/features/yard/assets/modelCatalog.ts`  
 In-hand mount: `src/features/garden/GardenToolView.tsx`  
+Knowledge copy: `src/game/learning/toolKnowledge.ts` (display only; numbers stay in `equipmentProfiles`)  
 Placement: `src/data/gardenPlacement.ts`, `docs/v06-scene-placement-audit.json`
 
 ## Modifications

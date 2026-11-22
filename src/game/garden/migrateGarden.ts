@@ -1,7 +1,20 @@
 import { createEdgeSegments } from "./edgeFixtures";
-import type { GardenDomain } from "./types";
+import type { GardenDomain, PlantEntity } from "./types";
 
-/** Ensure older nested garden domains gain edge + cleanup fields. */
+function migratePlants(
+  plants: Record<string, PlantEntity>,
+): Record<string, PlantEntity> {
+  const out: Record<string, PlantEntity> = {};
+  for (const [id, p] of Object.entries(plants ?? {})) {
+    out[id] = {
+      ...p,
+      countsTowardCompletion: p.countsTowardCompletion ?? true,
+    };
+  }
+  return out;
+}
+
+/** Ensure older nested garden domains gain edge, cleanup, and visitHistory. */
 export function migrateGardenDomain(garden: GardenDomain): GardenDomain {
   const edgeSegments =
     garden.edgeSegments && Object.keys(garden.edgeSegments).length > 0
@@ -9,11 +22,13 @@ export function migrateGardenDomain(garden: GardenDomain): GardenDomain {
       : createEdgeSegments();
   return {
     ...garden,
-    schemaVersion: 2,
+    schemaVersion: 3,
     edgeSegments,
     cleanupHistory: garden.cleanupHistory ?? [],
     focusPoint: garden.focusPoint ?? null,
     visitFinished: garden.visitFinished ?? false,
     lastVisitNote: garden.lastVisitNote ?? null,
+    visitHistory: garden.visitHistory ?? [],
+    plants: migratePlants(garden.plants ?? {}),
   };
 }

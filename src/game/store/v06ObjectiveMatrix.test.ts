@@ -286,11 +286,13 @@ describe("v06 objective matrix", () => {
     const weed = Object.values(useGameStore.getState().work.garden!.plants).find(
       (p) => p.kind === "weed",
     )!;
+    useGameStore.getState().selectTool("string-trimmer");
     useGameStore.getState().topCutWeed(weed.id);
     expect(useGameStore.getState().work.garden!.plants[weed.id].topCut).toBe(true);
     expect(useGameStore.getState().work.garden!.plants[weed.id].rootRemoved).toBe(
       false,
     );
+    useGameStore.getState().selectTool("hand-weeder");
     useGameStore.getState().pullWeed(weed.id);
     expect(useGameStore.getState().work.garden!.plants[weed.id].rootRemoved).toBe(
       true,

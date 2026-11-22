@@ -2,16 +2,9 @@
 
 import { Suspense, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
-import { FLOWERBED_PLACEMENT } from "@/data/gardenPlacement";
 import { MODEL_CATALOG } from "@/features/yard/assets/modelCatalog";
 import { useGameStore } from "@/game/store/gameStore";
 import { GardenToolView } from "./GardenToolView";
-
-function inFlowerbed(x: number, z: number) {
-  const c = FLOWERBED_PLACEMENT.hotspotCenter;
-  const s = FLOWERBED_PLACEMENT.hotspotSize;
-  return Math.abs(x - c[0]) <= s[0] * 0.65 && Math.abs(z - c[2]) <= s[2] * 0.65;
-}
 
 function WeedMesh({
   x,
@@ -49,33 +42,21 @@ export function FlowerbedTaskStage() {
   const selectedToolId = useGameStore((s) => s.work.selectedToolId);
   const pullWeed = useGameStore((s) => s.pullWeed);
   const topCutWeed = useGameStore((s) => s.topCutWeed);
-  const toolResource = useGameStore((s) =>
-    s.work.selectedToolId
-      ? s.work.tools[s.work.selectedToolId]?.resource
-      : 100,
-  );
-  const toolStatus = useGameStore((s) =>
-    s.work.selectedToolId
-      ? s.work.tools[s.work.selectedToolId]?.status
-      : "ready",
-  );
 
   if (!plants) return null;
 
+  // All completion-counted plants are operable here (J12).
   const local = Object.values(plants).filter(
-    (p) => !p.rootRemoved && inFlowerbed(p.x, p.z),
+    (p) => !p.rootRemoved && p.countsTowardCompletion !== false,
   );
 
-  const act = (id: string, kind: "weed" | "flower") => {
-    if (
-      selectedToolId === "string-trimmer" &&
-      (toolStatus === "unpowered" || (toolResource ?? 0) <= 0)
-    ) {
-      return;
-    }
+  const act = (id: string) => {
     if (selectedToolId === "hand-weeder") pullWeed(id);
     else if (selectedToolId === "string-trimmer") topCutWeed(id);
-    else if (kind === "flower") pullWeed(id);
+    else if (selectedToolId) {
+      // Wrong tool — store still enforces; surface via lastEvents
+      pullWeed(id);
+    }
   };
 
   return (
@@ -93,7 +74,7 @@ export function FlowerbedTaskStage() {
                 x={p.x}
                 z={p.z}
                 topCut={p.topCut}
-                onClick={() => act(p.id, "weed")}
+                onClick={() => act(p.id)}
               />
             );
           }
@@ -103,7 +84,7 @@ export function FlowerbedTaskStage() {
               position={[p.x, 0.25, p.z]}
               onClick={(e) => {
                 e.stopPropagation();
-                act(p.id, "flower");
+                act(p.id);
               }}
             >
               <sphereGeometry args={[0.16, 8, 8]} />

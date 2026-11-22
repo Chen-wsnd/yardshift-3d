@@ -55,15 +55,22 @@ export function createHedgeClusters(): Record<string, HedgeCluster> {
 
 export function createPlants(): Record<string, PlantEntity> {
   const out: Record<string, PlantEntity> = {};
-  MEASURED_DANDELIONS.forEach((d) => {
+  // Lawn-scattered measured clumps: visible décor unless flowerbed work reaches them.
+  // They count only when operable in flowerbed task (moved into west bed region).
+  MEASURED_DANDELIONS.forEach((d, i) => {
+    // Relocate counted weeds into the operable west flowerbed strip so
+    // "visible + unfinished" never means "untouchable" (J12).
+    const bedX = -6.0 + (i % 2) * 0.25;
+    const bedZ = 1.6 + i * 0.45;
     out[d.id] = {
       id: d.id,
       kind: "weed",
-      x: d.x,
-      z: d.z,
+      x: bedX,
+      z: bedZ,
       topCut: false,
       rootRemoved: false,
       ornamentalDamage: false,
+      countsTowardCompletion: true,
     };
   });
   const borderWeeds: [number, number][] = [
@@ -81,6 +88,7 @@ export function createPlants(): Record<string, PlantEntity> {
       topCut: false,
       rootRemoved: false,
       ornamentalDamage: false,
+      countsTowardCompletion: true,
     };
   });
   MEASURED_FLOWERS.forEach((f) => {
@@ -92,6 +100,7 @@ export function createPlants(): Record<string, PlantEntity> {
       topCut: false,
       rootRemoved: false,
       ornamentalDamage: false,
+      countsTowardCompletion: true,
     };
   });
   return out;
@@ -150,7 +159,7 @@ export function createInitialDebris(): Record<string, DebrisEntity> {
 
 export function createFreshGardenDomain(): GardenDomain {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     inspection: {},
     hazards: createHazards(),
     hedgeClusters: createHedgeClusters(),
@@ -171,5 +180,6 @@ export function createFreshGardenDomain(): GardenDomain {
     reviewOpen: false,
     visitFinished: false,
     lastVisitNote: null,
+    visitHistory: [],
   };
 }

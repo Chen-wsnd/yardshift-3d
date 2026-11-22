@@ -1,2 +1,3 @@
 export { BalanceDisplay } from "./BalanceDisplay";
-export { ShopPanel } from "./ShopPanel";
+export { RentalControls } from "./RentalControls";
+export { WorkbenchPanel } from "./WorkbenchPanel";

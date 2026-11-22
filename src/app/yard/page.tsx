@@ -2,12 +2,11 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { CompletionModal } from "@/features/jobs/CompletionModal";
-import { ToolSelector } from "@/features/tools";
-import { YardHud } from "@/features/yard/YardHud";
+import { SimpleJobResult } from "@/features/jobs/SimpleJobResult";
+import { EquipmentPanel } from "@/features/tools/EquipmentPanel";
 import { useGameStore } from "@/game/store/gameStore";
+import { SCENE_LAYOUTS } from "@/data/sceneLayouts";
 
 const YardCanvas = dynamic(
   () =>
@@ -23,18 +22,15 @@ const YardCanvas = dynamic(
 );
 
 export default function YardPage() {
-  const yardName = useGameStore((state) => state.yard.name);
-  const activeJobId = useGameStore((state) => state.progress.activeJobId);
-  const jobs = useGameStore((state) => state.jobs);
-  const enterActiveJob = useGameStore((state) => state.enterActiveJob);
-  const hydrated = useGameStore((state) => state.hydrated);
-  const activeJob = jobs.find((job) => job.id === activeJobId);
-
-  useEffect(() => {
-    if (activeJobId) {
-      enterActiveJob();
-    }
-  }, [activeJobId, enterActiveJob]);
+  const work = useGameStore((s) => s.work);
+  const focusZone = useGameStore((s) => s.focusZone);
+  const hydrated = useGameStore((s) => s.hydrated);
+  const jobId = work.activeJobId;
+  const layout = SCENE_LAYOUTS[jobId ?? "job-overgrown-lawn"];
+  const zone = jobId
+    ? work.jobs[jobId]?.zones.find((z) => z.id === work.focusedZoneId)
+    : null;
+  const event = work.lastEvents[0];
 
   return (
     <AppShell>
@@ -43,31 +39,56 @@ export default function YardPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 px-4 py-3 sm:px-6">
             <div>
               <h1 className="font-[family-name:var(--font-display)] text-xl text-stone-900">
-                {yardName}
+                {layout?.name ?? "Backyard"}{" "}
+                {zone ? `· ${zone.name}` : "· Overview"}
               </h1>
               <p className="text-sm text-stone-500">
                 {!hydrated
                   ? "Restoring save…"
-                  : activeJob
-                    ? `Job: ${activeJob.title}`
-                    : "No active job — accept one from the task board."}
+                  : jobId
+                    ? zone
+                      ? "Drag or click with your tool. Right-side toolbox shows condition."
+                      : "Click a highlighted work zone to focus."
+                    : "Accept a job from the Task Board first."}
               </p>
             </div>
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2"
-            >
-              Back to Task Board
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              {zone ? (
+                <button
+                  type="button"
+                  className="rounded-md px-3 py-2 text-sm text-stone-700 hover:bg-stone-100"
+                  onClick={() => focusZone(null)}
+                >
+                  Back to overview
+                </button>
+              ) : null}
+              <Link
+                href="/"
+                className="rounded-md px-3 py-2 text-sm text-stone-700 hover:bg-stone-100"
+              >
+                Task Board
+              </Link>
+            </div>
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 top-16 z-10 flex flex-col gap-2 p-3 sm:p-4">
+            <div className="pointer-events-auto max-w-md">
+              <SimpleJobResult />
+            </div>
+            {event ? (
+              <div
+                className="pointer-events-auto max-w-md rounded-md border border-emerald-200 bg-emerald-50/95 px-3 py-2 text-sm text-emerald-950"
+                role="status"
+              >
+                {event.explanation}
+              </div>
+            ) : null}
           </div>
           <div className="relative min-h-[420px] flex-1">
-            <YardHud />
             <YardCanvas />
           </div>
         </div>
-        <ToolSelector />
+        <EquipmentPanel />
       </div>
-      <CompletionModal />
     </AppShell>
   );
 }

@@ -4,114 +4,61 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useGameStore } from "./gameStore";
 
-describe("game loop store actions", () => {
+describe("v0.2 store orchestration", () => {
   beforeEach(() => {
-    useGameStore.getState().resetDemo();
+    useGameStore.getState().startV02Demo();
     localStorage.clear();
   });
 
-  it("completes Job 1, claims once, unlocks Job 2, and rejects double claim", () => {
-    expect(useGameStore.getState().acceptJob("job-overgrown-lawn")).toBe(true);
-
-    const objectives = useGameStore
-      .getState()
-      .yard.objects.filter((o) => o.isObjective);
-    expect(objectives.length).toBe(8);
-
-    for (const obj of objectives) {
-      useGameStore.getState().selectTool(obj.recommendedToolId ?? "rake");
-      // Pick a compatible owned/loaned tool if recommended missing from owned
-      const avail = useGameStore
-        .getState()
-        .getToolAvailability(
-          useGameStore.getState().progress.selectedToolId ?? "rake",
-        );
-      if (avail === "locked") {
-        useGameStore.getState().selectTool("rake");
-      }
-      // Use known compatible tools per target
-      const toolByKind: Record<string, string> = {
-        long_lawn: "lawn-mower",
-        lawn_edge: "lawn-edger",
-        tall_edge_grass: "string-trimmer",
-        weeds: "string-trimmer",
-        leaves: "rake",
-      };
-      useGameStore.getState().selectTool(toolByKind[obj.targetKind] ?? "rake");
-      const result = useGameStore.getState().interactWithObject(obj.id);
-      expect(result.success).toBe(true);
-    }
-
-    const progress = useGameStore.getState().getActiveJobProgress();
-    expect(progress?.complete).toBe(true);
-
-    expect(useGameStore.getState().claimReward("job-overgrown-lawn")).toBe(true);
-    expect(useGameStore.getState().player.balance).toBe(40 + 500);
-    expect(
-      useGameStore.getState().claimReward("job-overgrown-lawn"),
-    ).toBe(false);
-
-    const job2 = useGameStore
-      .getState()
-      .jobs.find((j) => j.id === "job-backyard-restoration");
-    expect(job2?.status).toBe("available");
+  it("accepts job 1, rents once, refuses double rent charge", () => {
+    const g = () => useGameStore.getState();
+    expect(g().acceptJob("job-overgrown-lawn")).toBe(true);
+    const bal = g().work.balance;
+    // string-trimmer rental 35 fits starting 40 credits
+    expect(g().rentTool("string-trimmer").ok).toBe(true);
+    expect(g().work.balance).toBe(bal - 35);
+    expect(g().rentTool("string-trimmer").ok).toBe(true);
+    expect(g().work.balance).toBe(bal - 35);
   });
 
-  it("rejects insufficient purchase and duplicate buy; reset restores starters", () => {
-    expect(useGameStore.getState().purchaseTool("chainsaw").ok).toBe(false);
+  it("blocks job 2 until job 1 claimed", () => {
+    const g = () => useGameStore.getState();
+    expect(g().isJobUnlocked("job-backyard-restoration")).toBe(false);
+    expect(g().acceptJob("job-backyard-restoration")).toBe(false);
+  });
 
+  it("settles payout once via finishJob", () => {
+    const g = () => useGameStore.getState();
+    expect(g().acceptJob("job-overgrown-lawn")).toBe(true);
+    const job = g().work.jobs["job-overgrown-lawn"];
+    const zones = job.zones.map((z) => ({
+      ...z,
+      cells: z.cells.map((c) =>
+        c.isPile
+          ? { ...c, collected: true, result: "bagged" as const }
+          : {
+              ...c,
+              remainingWork: 0,
+              result: "finished" as const,
+              collected: true,
+            },
+      ),
+    }));
     useGameStore.setState({
-      player: {
-        ...useGameStore.getState().player,
-        balance: 200,
+      work: {
+        ...g().work,
+        activeJobId: "job-overgrown-lawn",
+        jobs: {
+          ...g().work.jobs,
+          "job-overgrown-lawn": { ...job, zones },
+        },
       },
     });
-    expect(useGameStore.getState().purchaseTool("leaf-blower").ok).toBe(true);
-    expect(useGameStore.getState().purchaseTool("leaf-blower").ok).toBe(false);
-
-    useGameStore.getState().resetDemo();
-    expect(useGameStore.getState().player.balance).toBe(40);
-    expect(useGameStore.getState().player.ownedToolIds).not.toContain(
-      "leaf-blower",
-    );
-    expect(
-      useGameStore.getState().jobs.find((j) => j.id === "job-backyard-restoration")
-        ?.status,
-    ).toBe("locked");
-  });
-
-  it("grants Job 2 loaners so essential tools are usable without purchase", () => {
-    useGameStore.getState().acceptJob("job-overgrown-lawn");
-    const objs = useGameStore.getState().yard.objects.filter((o) => o.isObjective);
-    for (const obj of objs) {
-      const toolByKind: Record<string, string> = {
-        long_lawn: "lawn-mower",
-        lawn_edge: "lawn-edger",
-        tall_edge_grass: "string-trimmer",
-        weeds: "string-trimmer",
-        leaves: "rake",
-      };
-      useGameStore.getState().selectTool(toolByKind[obj.targetKind]);
-      useGameStore.getState().interactWithObject(obj.id);
-    }
-    useGameStore.getState().claimReward("job-overgrown-lawn");
-
-    expect(useGameStore.getState().acceptJob("job-backyard-restoration")).toBe(
-      true,
-    );
-    const loaned = useGameStore.getState().progress.loanedToolIds;
-    expect(loaned.length).toBeGreaterThan(0);
-    expect(
-      useGameStore.getState().getToolAvailability("chainsaw"),
-    ).toBe("loaned");
-
-    useGameStore.getState().selectTool("chainsaw");
-    const branch = useGameStore
-      .getState()
-      .yard.objects.find((o) => o.targetKind === "fallen_branch");
-    expect(branch).toBeDefined();
-    expect(
-      useGameStore.getState().interactWithObject(branch!.id).success,
-    ).toBe(true);
+    const bal = g().work.balance;
+    const result = g().finishJob(false);
+    expect(result.ok).toBe(true);
+    expect(g().work.jobs["job-overgrown-lawn"].claimed).toBe(true);
+    expect(g().work.balance).toBeGreaterThan(bal);
+    expect(g().finishJob(false).ok).toBe(false);
   });
 });

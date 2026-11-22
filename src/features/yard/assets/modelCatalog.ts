@@ -1,0 +1,139 @@
+export interface ModelCatalogEntry {
+  role: string;
+  localPath: string;
+  sourceUrl: string;
+  license: string;
+  scale: number;
+  yOffset: number;
+  fallback: "procedural";
+}
+
+/** Local CC0 Lawn Mowing Simulator Kit models (verified glTF magic). */
+export const MODEL_CATALOG: Record<string, ModelCatalogEntry> = {
+  lawn_uncut: {
+    role: "lawn_uncut",
+    localPath: "/assets/models/yardshift-kit/lawn-uncut.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27387/v1/model.glb",
+    license: "CC0 (3DAssets.dev Lawn Mowing Simulator Kit)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  lawn_cut: {
+    role: "lawn_cut",
+    localPath: "/assets/models/yardshift-kit/lawn-cut.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27385/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  hedge_block: {
+    role: "hedge_block",
+    localPath: "/assets/models/yardshift-kit/hedge-block.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27390/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  dandelion: {
+    role: "dandelion",
+    localPath: "/assets/models/yardshift-kit/dandelion.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27417/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  picket_fence: {
+    role: "picket_fence",
+    localPath: "/assets/models/yardshift-kit/picket-fence.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27388/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  patio_chair: {
+    role: "patio_chair",
+    localPath: "/assets/models/yardshift-kit/patio-chair.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27400/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  flower_border: {
+    role: "flower_border",
+    localPath: "/assets/models/yardshift-kit/flower-bed-border.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27392/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  mower: {
+    role: "mower",
+    localPath: "/assets/models/yardshift-kit/mower.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27334/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  hedge_trimmer: {
+    role: "hedge_trimmer",
+    localPath: "/assets/models/yardshift-kit/hedge-trimmer.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27377/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  leaf_rake: {
+    role: "leaf_rake",
+    localPath: "/assets/models/yardshift-kit/leaf-rake.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27371/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  leaf_blower: {
+    role: "leaf_blower",
+    localPath: "/assets/models/yardshift-kit/leaf-blower.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27379/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  string_trimmer: {
+    role: "string_trimmer",
+    localPath: "/assets/models/yardshift-kit/string-trimmer.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27378/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  grass_bag: {
+    role: "grass_bag",
+    localPath: "/assets/models/yardshift-kit/grass-bag.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27357/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+  garden_shears: {
+    role: "garden_shears",
+    localPath: "/assets/models/yardshift-kit/garden-shears.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27376/v1/model.glb",
+    license: "CC0 (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
+};

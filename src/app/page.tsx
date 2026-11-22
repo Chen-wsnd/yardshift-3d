@@ -9,8 +9,8 @@ export default function DashboardPage() {
           YardShift
         </p>
         <p className="mb-6 max-w-prose text-stone-600">
-          Browser gardening contracts — clean the yard, earn credits, unlock
-          better tools.
+          v0.2 garden work sim — inspect zones, work with real coverage, live with
+          the consequences.
         </p>
         <JobBoard />
       </div>

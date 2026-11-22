@@ -2,421 +2,389 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { JOB2_LOANER_TOOL_IDS, JOBS } from "@/data/jobs";
+import { EQUIPMENT_PROFILES, JOB_BASE_PAYOUT } from "@/data/equipmentProfiles";
 import {
-  BASE_YARD,
-  cloneLayoutObjects,
-  getLayoutByJobId,
-} from "@/data/layouts";
-import { INITIAL_PLAYER } from "@/data/player";
-import { TOOLS } from "@/data/tools";
-import { canClaimReward, canPurchaseTool } from "@/game/rules/economyRules";
+  applyClearJam,
+  applyRefill,
+  applyRepair,
+  repairCost,
+} from "@/game/rules/durabilityRules";
 import {
-  canAcceptJob,
-  getJobProgress,
-  isJobUnlocked,
-} from "@/game/rules/jobRules";
-import { evaluateToolUse } from "@/game/rules/toolRules";
-import type {
-  GameProgress,
-  GardeningTool,
-  Job,
-  JobProgress,
-  Player,
-  ToolAvailability,
-  ToolInteractionResult,
-  Yard,
-  YardObject,
-} from "@/game/types";
+  canEarlyFinish,
+  canFinishComplete,
+  computeNetPayout,
+  updateJobMetrics,
+} from "@/game/rules/qualityRules";
+import { applyWorkAction } from "@/game/work/engine";
+import { createFreshV02Snapshot, makeJobState } from "@/game/work/fixtures";
+import { feesForJob } from "@/game/work/selectors";
+import type { WorkAction, WorkEvent, WorkSnapshot } from "@/game/work/types";
 
-const PERSIST_KEY = "yardshift-v01";
+const PERSIST_KEY = "yardshift-v02";
 
 interface GameState {
-  player: Player;
-  jobs: Job[];
-  tools: GardeningTool[];
-  yard: Yard;
-  progress: GameProgress;
+  work: WorkSnapshot;
   hydrated: boolean;
-  setHydrated: (value: boolean) => void;
-  acceptJob: (jobId: string) => boolean;
-  enterActiveJob: () => boolean;
-  /** @deprecated use enterActiveJob */
-  enterYardForActiveJob: () => boolean;
-  selectTool: (toolId: string | null) => void;
-  interactWithObject: (objectId: string) => ToolInteractionResult;
-  getActiveJobProgress: () => JobProgress | null;
-  completeJobIfReady: () => boolean;
-  claimReward: (jobId: string) => boolean;
-  purchaseTool: (toolId: string) => { ok: boolean; reason?: string };
-  getToolAvailability: (toolId: string) => ToolAvailability;
+  setHydrated: (v: boolean) => void;
+  startV02Demo: () => void;
   resetDemo: () => void;
-  clearFeedback: () => void;
-  dismissCompletionModal: () => void;
-}
-
-const initialProgress = (): GameProgress => ({
-  activeJobId: null,
-  selectedToolId: "rake",
-  jobsCompleted: 0,
-  totalCreditsEarned: 0,
-  tutorialCompleted: false,
-  claimedRewardJobIds: [],
-  loanedToolIds: [],
-  lastFeedback: null,
-  showCompletionModal: false,
-});
-
-function freshJobs(): Job[] {
-  return JOBS.map((job) => ({
-    ...job,
-    status: job.unlockAfterJobId ? "locked" : "available",
-  }));
-}
-
-function emptyYard(): Yard {
-  return { ...BASE_YARD, objects: [] };
-}
-
-function loadYardForJob(jobId: string): YardObject[] {
-  const layout = getLayoutByJobId(jobId);
-  if (!layout) return [];
-  return cloneLayoutObjects(layout);
-}
-
-function computeLoaners(
-  jobId: string,
-  ownedToolIds: string[],
-): string[] {
-  if (jobId !== "job-backyard-restoration") return [];
-  return JOB2_LOANER_TOOL_IDS.filter((id) => !ownedToolIds.includes(id));
+  acceptJob: (jobId: string) => boolean;
+  focusZone: (zoneId: string | null) => void;
+  selectTool: (toolId: string | null) => void;
+  performWorkAction: (action: Omit<WorkAction, "jobId"> & { jobId?: string }) => WorkEvent[];
+  rentTool: (toolId: string) => { ok: boolean; reason?: string };
+  purchaseTool: (toolId: string) => { ok: boolean; reason?: string };
+  repairTool: (toolId: string) => { ok: boolean; reason?: string };
+  refillTool: (toolId: string) => { ok: boolean; reason?: string };
+  clearJam: (toolId: string) => void;
+  finishJob: (early: boolean) => { ok: boolean; reason?: string; net?: number };
+  claimReward: (jobId: string) => boolean;
+  isJobUnlocked: (jobId: string) => boolean;
 }
 
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      player: { ...INITIAL_PLAYER, ownedToolIds: [...INITIAL_PLAYER.ownedToolIds] },
-      jobs: freshJobs(),
-      tools: TOOLS,
-      yard: emptyYard(),
-      progress: initialProgress(),
+      work: createFreshV02Snapshot(),
       hydrated: false,
+      setHydrated: (v) => set({ hydrated: v }),
 
-      setHydrated: (value) => set({ hydrated: value }),
+      startV02Demo: () => set({ work: createFreshV02Snapshot() }),
+
+      resetDemo: () => set({ work: createFreshV02Snapshot() }),
+
+      isJobUnlocked: (jobId) => {
+        const { work } = get();
+        if (jobId === "job-overgrown-lawn") return true;
+        if (jobId === "job-backyard-restoration") {
+          return Boolean(work.jobs["job-overgrown-lawn"]?.claimed);
+        }
+        return false;
+      },
 
       acceptJob: (jobId) => {
-        const { player, jobs, progress } = get();
-        const job = jobs.find((j) => j.id === jobId);
-        if (!job) return false;
-
-        const unlocked = isJobUnlocked(job, progress.claimedRewardJobIds);
-        const normalized: Job = {
-          ...job,
-          status:
-            job.status === "locked" && unlocked ? "available" : job.status,
-        };
-
-        if (!canAcceptJob(player, normalized, progress.claimedRewardJobIds)) {
-          return false;
-        }
-
-        const loanedToolIds = computeLoaners(jobId, player.ownedToolIds);
-        const objects = loadYardForJob(jobId);
-
+        const { work, isJobUnlocked } = get();
+        if (!isJobUnlocked(jobId)) return false;
+        if (work.jobs[jobId]?.claimed) return false;
+        const job = makeJobState(jobId);
         set({
-          jobs: jobs.map((j) =>
-            j.id === jobId
-              ? { ...j, status: "accepted" }
-              : j.status === "locked" &&
-                  isJobUnlocked(j, progress.claimedRewardJobIds)
-                ? { ...j, status: "available" }
-                : j,
-          ),
-          yard: { ...BASE_YARD, objects },
-          progress: {
-            ...progress,
+          work: {
+            ...work,
             activeJobId: jobId,
-            loanedToolIds,
-            lastFeedback: loanedToolIds.length
-              ? `Demo loaners equipped: ${loanedToolIds.join(", ")}`
-              : "Job accepted — enter the yard.",
-            showCompletionModal: false,
-            selectedToolId:
-              progress.selectedToolId ??
-              player.ownedToolIds[0] ??
-              loanedToolIds[0] ??
-              null,
+            focusedZoneId: null,
+            rentedToolIds: [],
+            jobs: { ...work.jobs, [jobId]: job },
+            lastEvents: [
+              {
+                id: "accept",
+                kind: "progress",
+                zoneId: "",
+                toolId: "",
+                explanation: "Job accepted. Pick a work zone in the yard.",
+              },
+            ],
           },
         });
         return true;
       },
 
-      enterActiveJob: () => {
-        const { progress, jobs } = get();
-        if (!progress.activeJobId) return false;
-        set({
-          jobs: jobs.map((j) =>
-            j.id === progress.activeJobId
-              ? { ...j, status: "in_progress" }
-              : j,
-          ),
-        });
-        return true;
+      focusZone: (zoneId) => {
+        set({ work: { ...get().work, focusedZoneId: zoneId } });
       },
-
-      enterYardForActiveJob: () => get().enterActiveJob(),
 
       selectTool: (toolId) => {
-        set({
-          progress: {
-            ...get().progress,
-            selectedToolId: toolId,
-            lastFeedback: toolId
-              ? `Selected ${get().tools.find((t) => t.id === toolId)?.name ?? toolId}`
-              : null,
-          },
-        });
+        set({ work: { ...get().work, selectedToolId: toolId } });
       },
 
-      getToolAvailability: (toolId) => {
-        const { player, progress } = get();
-        if (player.ownedToolIds.includes(toolId)) return "owned";
-        if (progress.loanedToolIds.includes(toolId)) return "loaned";
-        const tool = TOOLS.find((t) => t.id === toolId);
-        if (tool && !tool.ownedByDefault) return "available_for_purchase";
-        return "locked";
-      },
-
-      interactWithObject: (objectId) => {
-        const state = get();
-        const object = state.yard.objects.find((o) => o.id === objectId);
-        if (!object) {
-          const fail = { success: false, message: "Object not found." };
-          set({
-            progress: { ...state.progress, lastFeedback: fail.message },
-          });
-          return fail;
-        }
-
-        const toolId = state.progress.selectedToolId;
-        const availability = toolId
-          ? state.getToolAvailability(toolId)
-          : "locked";
-
-        const usableAvailability: ToolAvailability =
-          availability === "owned" || availability === "loaned"
-            ? availability
-            : "locked";
-
-        const result = evaluateToolUse(
-          toolId,
-          object.targetKind,
-          object.interactionState,
-          usableAvailability,
-        );
-
-        if (!result.success) {
-          set({
-            progress: { ...state.progress, lastFeedback: result.message },
-          });
-          return { ...result, objectId };
-        }
-
-        // Idempotent clean — only first success counts
-        if (object.cleaned || object.interactionState === "cleaned") {
-          const already = {
-            success: false,
-            message: "Already cleaned.",
-            objectId,
-            effectType: "none" as const,
-          };
-          set({
-            progress: { ...state.progress, lastFeedback: already.message },
-          });
-          return already;
-        }
-
-        const objects = state.yard.objects.map((o) =>
-          o.id === objectId
-            ? {
-                ...o,
-                cleaned: true,
-                interactionState: "cleaned" as const,
-              }
-            : o,
-        );
-
-        const activeJob = state.jobs.find(
-          (j) => j.id === state.progress.activeJobId,
-        );
-        const jobProgress = activeJob
-          ? getJobProgress(activeJob.id, objects, activeJob.objectiveIds)
-          : null;
-
-        set({
-          yard: { ...state.yard, objects },
-          progress: {
-            ...state.progress,
-            lastFeedback: result.message,
-            showCompletionModal: jobProgress?.complete ?? false,
-          },
-        });
-
-        return { ...result, objectId };
-      },
-
-      getActiveJobProgress: () => {
-        const { progress, jobs, yard } = get();
-        if (!progress.activeJobId) return null;
-        const job = jobs.find((j) => j.id === progress.activeJobId);
-        if (!job) return null;
-        return getJobProgress(job.id, yard.objects, job.objectiveIds);
-      },
-
-      completeJobIfReady: () => {
-        const progress = get().getActiveJobProgress();
-        return Boolean(progress?.complete);
-      },
-
-      claimReward: (jobId) => {
-        const state = get();
-        const job = state.jobs.find((j) => j.id === jobId);
-        if (!job) return false;
-
-        const objects =
-          state.progress.activeJobId === jobId
-            ? state.yard.objects
-            : loadYardForJob(jobId);
-
-        const jobProgress = getJobProgress(job.id, objects, job.objectiveIds);
-        const claim = canClaimReward(
+      performWorkAction: (partial) => {
+        const { work } = get();
+        const jobId = partial.jobId ?? work.activeJobId;
+        if (!jobId || !work.selectedToolId) return [];
+        const action: WorkAction = {
           jobId,
-          jobProgress.complete || job.status === "completed",
-          state.progress.claimedRewardJobIds,
-        );
-        if (!claim.ok) {
-          set({
-            progress: {
-              ...state.progress,
-              lastFeedback: claim.reason,
-            },
-          });
-          return false;
-        }
+          zoneId: partial.zoneId,
+          toolId: partial.toolId ?? work.selectedToolId,
+          action: partial.action,
+          worldX: partial.worldX,
+          worldZ: partial.worldZ,
+          strokeId: partial.strokeId,
+          direction: partial.direction,
+        };
+        const profile = EQUIPMENT_PROFILES.find((p) => p.id === action.toolId);
+        if (profile) action.action = profile.actionKind;
+        const { nextState, events } = applyWorkAction(work, action);
 
-        // Guard double-claim
-        if (state.progress.claimedRewardJobIds.includes(jobId)) {
-          return false;
-        }
-
-        const payout = job.reward.amount;
-        const claimedRewardJobIds = [
-          ...state.progress.claimedRewardJobIds,
-          jobId,
-        ];
-
-        set({
-          player: {
-            ...state.player,
-            balance: state.player.balance + payout,
-            completedJobIds: state.player.completedJobIds.includes(jobId)
-              ? state.player.completedJobIds
-              : [...state.player.completedJobIds, jobId],
-          },
-          jobs: state.jobs.map((j) => {
-            if (j.id === jobId) {
-              return { ...j, status: "completed" };
+        // Book one-time damage fees from events
+        let snap = nextState;
+        for (const ev of events) {
+          if (ev.kind === "environment_damaged" && ev.costCredits && ev.damageKey) {
+            const ledgerId = `damage:${ev.damageKey}`;
+            if (!snap.ledger.some((l) => l.id === ledgerId)) {
+              snap = {
+                ...snap,
+                ledger: [
+                  ...snap.ledger,
+                  {
+                    id: ledgerId,
+                    kind: "damage",
+                    jobId,
+                    amount: ev.costCredits,
+                    label: ev.explanation,
+                  },
+                ],
+              };
             }
-            if (
-              j.unlockAfterJobId === jobId &&
-              (j.status === "locked" || j.status === "available")
-            ) {
-              return { ...j, status: "available" };
-            }
-            return j;
-          }),
-          progress: {
-            ...state.progress,
-            claimedRewardJobIds,
-            jobsCompleted: state.progress.jobsCompleted + 1,
-            totalCreditsEarned: state.progress.totalCreditsEarned + payout,
-            loanedToolIds: [],
-            activeJobId: null,
-            showCompletionModal: false,
-            lastFeedback: `Claimed ${payout} credits!`,
-          },
-        });
-        return true;
+          }
+        }
+        set({ work: snap });
+        return events;
       },
 
-      purchaseTool: (toolId) => {
-        const state = get();
-        const result = canPurchaseTool(state.player, toolId);
-        if (!result.ok) {
-          set({
-            progress: {
-              ...state.progress,
-              lastFeedback: result.reason,
-            },
-          });
-          return { ok: false, reason: result.reason };
+      rentTool: (toolId) => {
+        const { work } = get();
+        const profile = EQUIPMENT_PROFILES.find((p) => p.id === toolId);
+        if (!profile || profile.rentalCredits <= 0) {
+          return { ok: false, reason: "Not rentable." };
         }
-
+        if (!work.activeJobId) {
+          return { ok: false, reason: "Accept a job first." };
+        }
+        const ledgerId = `rental:${work.activeJobId}:${toolId}`;
+        if (work.ledger.some((l) => l.id === ledgerId)) {
+          // already rented this job — ensure in rented list
+          if (!work.rentedToolIds.includes(toolId)) {
+            set({
+              work: {
+                ...work,
+                rentedToolIds: [...work.rentedToolIds, toolId],
+              },
+            });
+          }
+          return { ok: true };
+        }
+        if (work.ownedToolIds.includes(toolId)) {
+          return { ok: false, reason: "Already owned." };
+        }
+        if (work.balance < profile.rentalCredits) {
+          return { ok: false, reason: "Not enough credits to rent." };
+        }
         set({
-          player: {
-            ...state.player,
-            balance: result.newBalance,
-            ownedToolIds: [...state.player.ownedToolIds, toolId],
-          },
-          progress: {
-            ...state.progress,
-            loanedToolIds: state.progress.loanedToolIds.filter(
-              (id) => id !== toolId,
-            ),
-            lastFeedback: `Purchased ${result.tool.name}.`,
+          work: {
+            ...work,
+            balance: work.balance - profile.rentalCredits,
+            rentedToolIds: [...new Set([...work.rentedToolIds, toolId])],
+            ledger: [
+              ...work.ledger,
+              {
+                id: ledgerId,
+                kind: "rental",
+                jobId: work.activeJobId,
+                amount: profile.rentalCredits,
+                label: `Rental: ${profile.name}`,
+              },
+            ],
           },
         });
         return { ok: true };
       },
 
-      resetDemo: () => {
+      purchaseTool: (toolId) => {
+        const { work } = get();
+        const profile = EQUIPMENT_PROFILES.find((p) => p.id === toolId);
+        if (!profile || profile.ownedByDefault) {
+          return { ok: false, reason: "Cannot purchase." };
+        }
+        if (work.ownedToolIds.includes(toolId)) {
+          return { ok: false, reason: "Already owned." };
+        }
+        if (work.balance < profile.purchaseCredits) {
+          return { ok: false, reason: "Insufficient credits." };
+        }
         set({
-          player: {
-            ...INITIAL_PLAYER,
-            ownedToolIds: [...INITIAL_PLAYER.ownedToolIds],
+          work: {
+            ...work,
+            balance: work.balance - profile.purchaseCredits,
+            ownedToolIds: [...work.ownedToolIds, toolId],
           },
-          jobs: freshJobs(),
-          yard: emptyYard(),
-          progress: initialProgress(),
+        });
+        return { ok: true };
+      },
+
+      repairTool: (toolId) => {
+        const { work } = get();
+        const tool = work.tools[toolId];
+        if (!tool) return { ok: false, reason: "Unknown tool." };
+        const cost = repairCost(tool);
+        const ledgerId = `repair:${work.activeJobId ?? "none"}:${toolId}:${tool.condition}:${tool.status}`;
+        if (work.ledger.some((l) => l.id === ledgerId)) {
+          return { ok: false, reason: "Already repaired this incident." };
+        }
+        let balance = work.balance;
+        let amount = cost;
+        if (balance < cost) {
+          // deferred capped charge — still repair
+          amount = Math.min(cost, 25);
+        } else {
+          balance -= cost;
+        }
+        const repaired = applyRepair(tool);
+        set({
+          work: {
+            ...work,
+            balance,
+            tools: { ...work.tools, [toolId]: repaired },
+            ledger: [
+              ...work.ledger,
+              {
+                id: ledgerId,
+                kind: "repair",
+                jobId: work.activeJobId,
+                amount,
+                label: `Repair ${toolId}`,
+              },
+            ],
+          },
+        });
+        return { ok: true };
+      },
+
+      refillTool: (toolId) => {
+        const { work } = get();
+        const tool = work.tools[toolId];
+        const profile = EQUIPMENT_PROFILES.find((p) => p.id === toolId);
+        if (!tool || !profile) return { ok: false, reason: "Unknown tool." };
+        const cost = profile.ownedByDefault ? 0 : 10;
+        if (work.balance < cost) return { ok: false, reason: "Need credits." };
+        const ledgerId = `refill:${work.activeJobId ?? "x"}:${toolId}:${Date.now()}`;
+        // throttle: one refill ledger per tool per job for powered
+        const existing = work.ledger.find(
+          (l) =>
+            l.kind === "refill" &&
+            l.jobId === work.activeJobId &&
+            l.label.includes(toolId),
+        );
+        if (existing && !profile.ownedByDefault) {
+          // allow refill but no double fee same job — still refill resource
+          set({
+            work: {
+              ...work,
+              tools: { ...work.tools, [toolId]: applyRefill(tool) },
+            },
+          });
+          return { ok: true };
+        }
+        set({
+          work: {
+            ...work,
+            balance: work.balance - cost,
+            tools: { ...work.tools, [toolId]: applyRefill(tool) },
+            ledger:
+              cost > 0
+                ? [
+                    ...work.ledger,
+                    {
+                      id: ledgerId,
+                      kind: "refill",
+                      jobId: work.activeJobId,
+                      amount: cost,
+                      label: `Refill ${toolId}`,
+                    },
+                  ]
+                : work.ledger,
+          },
+        });
+        return { ok: true };
+      },
+
+      clearJam: (toolId) => {
+        const { work } = get();
+        const tool = work.tools[toolId];
+        if (!tool) return;
+        set({
+          work: {
+            ...work,
+            tools: { ...work.tools, [toolId]: applyClearJam(tool) },
+          },
         });
       },
 
-      clearFeedback: () => {
+      finishJob: (early) => {
+        const { work } = get();
+        const jobId = work.activeJobId;
+        if (!jobId) return { ok: false, reason: "No active job." };
+        let job = updateJobMetrics(work.jobs[jobId]);
+        if (early) {
+          if (!canEarlyFinish(job)) {
+            return {
+              ok: false,
+              reason: "Need at least 70% essential work to finish early.",
+            };
+          }
+          job = { ...job, earlyFinish: true };
+        } else if (!canFinishComplete(job) && !canEarlyFinish(job)) {
+          return { ok: false, reason: "Work incomplete." };
+        }
+        const fees = feesForJob(work, jobId);
+        const net = computeNetPayout(job, fees);
+        const payoutId = `payout:${jobId}`;
+        if (work.ledger.some((l) => l.id === payoutId) || job.claimed) {
+          return { ok: false, reason: "Already settled." };
+        }
+        job = {
+          ...job,
+          settled: true,
+          claimed: true,
+          netCredits: net,
+        };
         set({
-          progress: { ...get().progress, lastFeedback: null },
+          work: {
+            ...work,
+            balance: work.balance + net,
+            activeJobId: null,
+            focusedZoneId: null,
+            rentedToolIds: [],
+            jobs: { ...work.jobs, [jobId]: job },
+            ledger: [
+              ...work.ledger,
+              {
+                id: payoutId,
+                kind: "payout",
+                jobId,
+                amount: -net,
+                label: `Payout ${jobId} (base ${JOB_BASE_PAYOUT[jobId]})`,
+              },
+            ],
+            lastEvents: [
+              {
+                id: "settle",
+                kind: "progress",
+                zoneId: "",
+                toolId: "",
+                explanation: `Job settled for ${net} credits (quality ${Math.round(job.qualityScore)}).`,
+              },
+            ],
+          },
         });
+        return { ok: true, net };
       },
 
-      dismissCompletionModal: () => {
-        set({
-          progress: { ...get().progress, showCompletionModal: false },
-        });
+      claimReward: (jobId) => {
+        // v0.2 settles on finishJob; claim is alias if already finished but not claimed
+        const { work, finishJob } = get();
+        const job = work.jobs[jobId];
+        if (!job) return false;
+        if (job.claimed) return false;
+        if (work.activeJobId === jobId) {
+          const res = finishJob(canFinishComplete(job) ? false : true);
+          return Boolean(res.ok);
+        }
+        return false;
       },
     }),
     {
       name: PERSIST_KEY,
-      version: 1,
-      partialize: (state) => ({
-        player: state.player,
-        jobs: state.jobs,
-        yard: state.yard,
-        progress: {
-          ...state.progress,
-          // Don't persist transient UI noise indefinitely — keep rewards/jobs
-          lastFeedback: null,
-          showCompletionModal: state.progress.showCompletionModal,
-        },
-      }),
+      version: 2,
+      partialize: (state) => ({ work: state.work }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
       },
@@ -424,7 +392,6 @@ export const useGameStore = create<GameState>()(
   ),
 );
 
-/** Browser QA / demo console access — not used by UI. */
 declare global {
   interface Window {
     __yardshift?: typeof useGameStore;

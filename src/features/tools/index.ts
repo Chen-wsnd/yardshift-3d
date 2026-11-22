@@ -1,1 +1,1 @@
-export { ToolSelector } from "./ToolSelector";
+export { EquipmentPanel } from "./EquipmentPanel";

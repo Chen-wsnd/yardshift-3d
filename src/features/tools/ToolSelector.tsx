@@ -4,12 +4,17 @@ import { useGameStore } from "@/game/store/gameStore";
 
 export function ToolSelector() {
   const tools = useGameStore((state) => state.tools);
-  const ownedToolIds = useGameStore((state) => state.player.ownedToolIds);
   const selectedToolId = useGameStore((state) => state.progress.selectedToolId);
   const selectTool = useGameStore((state) => state.selectTool);
+  const getToolAvailability = useGameStore((state) => state.getToolAvailability);
+  const loaned = useGameStore((state) => state.progress.loanedToolIds);
 
-  const ownedTools = tools.filter((tool) => ownedToolIds.includes(tool.id));
-  const selected = ownedTools.find((tool) => tool.id === selectedToolId);
+  const usable = tools.filter((tool) => {
+    const a = getToolAvailability(tool.id);
+    return a === "owned" || a === "loaned";
+  });
+
+  const selected = tools.find((tool) => tool.id === selectedToolId);
 
   return (
     <aside
@@ -20,27 +25,34 @@ export function ToolSelector() {
         Tools
       </h2>
       <p className="text-xs text-stone-500">
-        Selection only in Phase 0 — interactions come later.
+        Select a tool, then click a matching target in the yard.
       </p>
       <ul className="flex flex-col gap-2">
-        {ownedTools.map((tool) => {
-          const selected = tool.id === selectedToolId;
+        {usable.map((tool) => {
+          const isSelected = tool.id === selectedToolId;
+          const isLoan = loaned.includes(tool.id);
           return (
             <li key={tool.id}>
               <button
                 type="button"
                 onClick={() => selectTool(tool.id)}
                 className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
-                  selected
+                  isSelected
                     ? "bg-emerald-700 text-white"
                     : "bg-stone-100 text-stone-800 hover:bg-stone-200"
                 }`}
               >
-                <span className="font-medium">{tool.name}</span>
+                <span className="font-medium">
+                  <span aria-hidden className="mr-1">
+                    {tool.emoji}
+                  </span>
+                  {tool.name}
+                </span>
                 <span
-                  className={`mt-0.5 block text-xs ${selected ? "text-emerald-100" : "text-stone-500"}`}
+                  className={`mt-0.5 block text-xs ${isSelected ? "text-emerald-100" : "text-stone-500"}`}
                 >
-                  {tool.category}
+                  {tool.compatibleTargets.join(", ")}
+                  {isLoan ? " · demo loaner" : ""}
                 </span>
               </button>
             </li>

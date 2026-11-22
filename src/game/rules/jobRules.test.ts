@@ -1,64 +1,102 @@
 import { describe, expect, it } from "vitest";
-import { SAMPLE_JOBS } from "@/data/sampleJobs";
-import { SAMPLE_PLAYER } from "@/data/samplePlayer";
-import { SAMPLE_TOOLS } from "@/data/sampleTools";
+import { JOBS } from "@/data/jobs";
+import {
+  LAYOUT_OVERGROWN_LAWN,
+  cloneLayoutObjects,
+} from "@/data/layouts";
+import { INITIAL_PLAYER } from "@/data/player";
+import { STARTER_TOOL_IDS } from "@/data/tools";
 import {
   calculateJobPayout,
   canAcceptJob,
+  countScoreableObjectives,
   getAcceptJobBlockReason,
+  getJobProgress,
+  isJobUnlocked,
 } from "./jobRules";
-import type { Player } from "@/game/types";
+import type { YardObject } from "@/game/types";
 
-describe("canAcceptJob", () => {
-  it("allows accepting an available job when required tools are owned", () => {
-    const job = SAMPLE_JOBS[0];
-    expect(job).toBeDefined();
-    expect(canAcceptJob(SAMPLE_PLAYER, job)).toBe(true);
-    expect(getAcceptJobBlockReason(SAMPLE_PLAYER, job)).toBeNull();
+const job1 = JOBS[0];
+const job2 = JOBS[1];
+
+describe("job unlock and accept", () => {
+  it("allows Job 1 when available", () => {
+    expect(canAcceptJob(INITIAL_PLAYER, job1, [])).toBe(true);
+    expect(getAcceptJobBlockReason(INITIAL_PLAYER, job1, [])).toBeNull();
   });
 
-  it("blocks acceptance when a required tool is missing", () => {
-    const job = SAMPLE_JOBS[0];
-    const playerWithoutTools: Player = {
-      ...SAMPLE_PLAYER,
-      ownedToolIds: [],
-    };
-
-    expect(canAcceptJob(playerWithoutTools, job)).toBe(false);
-    expect(getAcceptJobBlockReason(playerWithoutTools, job)).toMatch(
-      /Missing required tools/,
+  it("locks Job 2 before Job 1 reward claim", () => {
+    expect(isJobUnlocked(job2, [])).toBe(false);
+    expect(canAcceptJob(INITIAL_PLAYER, { ...job2, status: "available" }, [])).toBe(
+      false,
     );
   });
 
-  it("blocks acceptance when job is already accepted", () => {
-    const job = { ...SAMPLE_JOBS[0], status: "accepted" as const };
-    expect(canAcceptJob(SAMPLE_PLAYER, job)).toBe(false);
+  it("unlocks Job 2 after Job 1 claim", () => {
+    expect(isJobUnlocked(job2, ["job-overgrown-lawn"])).toBe(true);
+    expect(
+      canAcceptJob(
+        INITIAL_PLAYER,
+        { ...job2, status: "available" },
+        ["job-overgrown-lawn"],
+      ),
+    ).toBe(true);
   });
 });
 
-describe("calculateJobPayout", () => {
-  it("returns the job reward amount", () => {
-    expect(calculateJobPayout(SAMPLE_JOBS[0])).toBe(
-      SAMPLE_JOBS[0].reward.amount,
+describe("job progress", () => {
+  it("ignores decorative objects in scoreable count", () => {
+    const objects = cloneLayoutObjects(LAYOUT_OVERGROWN_LAWN);
+    const scoreable = countScoreableObjectives(objects);
+    const decorative = objects.filter((o) => !o.isObjective).length;
+    expect(decorative).toBeGreaterThan(0);
+    expect(scoreable).toBe(job1.objectiveIds.length);
+    expect(scoreable).toBe(8);
+  });
+
+  it("is incomplete while any required target remains", () => {
+    const objects = cloneLayoutObjects(LAYOUT_OVERGROWN_LAWN);
+    const progress = getJobProgress(job1.id, objects, job1.objectiveIds);
+    expect(progress.complete).toBe(false);
+    expect(progress.cleanedCount).toBe(0);
+  });
+
+  it("completes when all objectives cleaned; double-clean does not inflate count", () => {
+    const objects = cloneLayoutObjects(LAYOUT_OVERGROWN_LAWN).map((o) =>
+      o.isObjective
+        ? { ...o, cleaned: true, interactionState: "cleaned" as const }
+        : o,
     );
+    const progress = getJobProgress(job1.id, objects, job1.objectiveIds);
+    expect(progress.complete).toBe(true);
+    expect(progress.cleanedCount).toBe(8);
+
+    // Cleaning again in-place still counts once
+    const again = objects.map((o) =>
+      o.isObjective ? { ...o, cleaned: true } : o,
+    );
+    expect(getJobProgress(job1.id, again, job1.objectiveIds).cleanedCount).toBe(
+      8,
+    );
+  });
+
+  it("returns payout amount", () => {
+    expect(calculateJobPayout(job1)).toBe(500);
+    expect(calculateJobPayout(job2)).toBe(350);
   });
 });
 
 describe("sample data invariants", () => {
-  it("keeps default-owned tools consistent with the sample player", () => {
-    const defaultOwned = SAMPLE_TOOLS.filter((t) => t.ownedByDefault).map(
-      (t) => t.id,
-    );
-    expect(SAMPLE_PLAYER.ownedToolIds).toEqual(defaultOwned);
+  it("keeps starter tools on the initial player", () => {
+    expect(INITIAL_PLAYER.ownedToolIds).toEqual(STARTER_TOOL_IDS);
   });
 
-  it("ensures the sample job references known tools and yard", () => {
-    const job = SAMPLE_JOBS[0];
-    const toolIds = new Set(SAMPLE_TOOLS.map((t) => t.id));
-
-    expect(job.yardId).toBe("yard-maple-lane");
-    for (const toolId of job.requiredToolIds) {
-      expect(toolIds.has(toolId)).toBe(true);
+  it("Job layouts only score isObjective targets", () => {
+    const objs: YardObject[] = cloneLayoutObjects(LAYOUT_OVERGROWN_LAWN);
+    for (const id of job1.objectiveIds) {
+      const found = objs.find((o) => o.id === id);
+      expect(found?.isObjective).toBe(true);
+      expect(found?.targetKind).not.toBe("decorative");
     }
   });
 });

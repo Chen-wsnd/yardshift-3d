@@ -1,21 +1,12 @@
 # YardShift 3D
 
-Browser-based 3D gardening simulation for a Sundai Club hackathon. Players browse yard cleanup jobs, enter an interactive backyard, select gardening tools, and learn real-world equipment purposes through play.
+Browser-based 3D gardening simulation. Accept yard cleanup jobs, use real-world-inspired tools on interactive targets, earn credits, unlock a second job, and buy advanced equipment.
 
-**Phase 0** establishes the project foundation: module boundaries, shared types, a navigable dashboard + procedural 3D yard, and collaboration docs. Full gameplay loops come in later phases.
+**v0.1** — two playable jobs, eight tools, shop, rewards, persistence, and Reset Demo.
 
 ## Stack
 
-| Layer | Choice |
-| --- | --- |
-| App framework | Next.js 15 (App Router) |
-| UI | React 19, Tailwind CSS 4 |
-| 3D | Three.js, React Three Fiber, Drei |
-| Client state | Zustand |
-| Language | TypeScript (strict) |
-| Quality | ESLint, Vitest |
-
-No database, auth, backend API, or payments in Phase 0 — all game data is local.
+Next.js 15 (App Router) · React 19 · TypeScript strict · Tailwind 4 · Three.js / R3F / Drei · Zustand (persisted) · ESLint · Vitest
 
 ## Quick start
 
@@ -26,57 +17,37 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Scripts
-
 | Script | Purpose |
 | --- | --- |
-| `npm run dev` | Local development (Turbopack) |
+| `npm run dev` | Local development |
 | `npm run build` | Production build |
 | `npm run start` | Serve production build |
 | `npm run lint` | ESLint |
-| `npm run test` | Vitest unit tests |
+| `npm run test` | Vitest |
 | `npm run typecheck` | `tsc --noEmit` |
 
-## Routes
+## Play loop
 
-| Path | Feature |
-| --- | --- |
-| `/` | Dashboard / task board — sample job, Accept Job, navigate to yard |
-| `/yard` | Client-only 3D backyard + tool selector + balance |
+1. **Task Board (`/`)** — Accept **Overgrown Lawn** (Job 1).
+2. **Yard (`/yard`)** — Select a tool, click matching cleanup targets (8 required).
+3. **Claim reward** — +500 credits; Job 2 and the shop unlock.
+4. **Backyard Restoration** — Advanced tools via shop or demo loaners; 7 targets; +350 credits.
+5. **Reset Demo** — Clears progress for a fresh run (persisted in `localStorage`).
 
-## Project layout
+## Layout
 
 ```
-src/app/              Routes (dashboard, yard)
-src/components/ui/    Shared UI primitives
-src/components/layout/ App chrome (header, shell)
-src/features/jobs/    Task board & job cards
-src/features/yard/    3D scene (client-only Canvas)
-src/features/tools/   Tool selection UI
-src/features/economy/ Balance display
-src/features/tutorial/ Reserved for onboarding (Phase 1+)
-src/game/types/       Shared domain contracts
-src/game/store/       Zustand game state
-src/game/rules/       Pure rules / validation
-src/data/             Local sample data
-public/assets/        Future models, textures, audio
-docs/                 Architecture, roadmap, contributing
+src/app/                 Routes
+src/features/jobs/       Task board, completion modal
+src/features/yard/       3D scene + interactions
+src/features/tools/      Tool dock
+src/features/economy/    Balance + shop
+src/game/types|store|rules
+src/data/                Tools, jobs, yard layouts
+docs/                    Architecture, one-shot build, execution log
 ```
 
-## Team ownership
-
-| Role | Owns |
-| --- | --- |
-| Developer A | `features/yard` — 3D environment & interactions |
-| Developer B | `features/jobs`, `tools`, `economy`, `game/rules` |
-| Developer C | `components/*`, `app/*` navigation/UI, `features/tutorial` |
-| Integrator | `game/types`, `game/store`, PRs, integration |
-
-Do not change another module’s internals without coordination. Shared type and store changes need review before merge.
-
-Suggested branches: `feature/yard-interactions`, `feature/jobs-economy`, `feature/ui-dashboard`, `feature/tutorial-system`.
-
-See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/ROADMAP.md](docs/ROADMAP.md).
+See [docs/CURSOR_ONE_SHOT_BUILD.md](docs/CURSOR_ONE_SHOT_BUILD.md) and [docs/EXECUTION_LOG.md](docs/EXECUTION_LOG.md).
 
 ## License
 

@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { canAcceptJob, getAcceptJobBlockReason } from "@/game/rules/jobRules";
+import {
+  deriveDisplayStatus,
+  getAcceptJobBlockReason,
+} from "@/game/rules/jobRules";
 import { useGameStore } from "@/game/store/gameStore";
 import type { Job } from "@/game/types";
 
@@ -12,13 +15,19 @@ interface JobCardProps {
 
 export function JobCard({ job }: JobCardProps) {
   const player = useGameStore((state) => state.player);
+  const claimed = useGameStore((state) => state.progress.claimedRewardJobIds);
   const acceptJob = useGameStore((state) => state.acceptJob);
-  const enterYardForActiveJob = useGameStore((state) => state.enterYardForActiveJob);
+  const enterActiveJob = useGameStore((state) => state.enterActiveJob);
+  const activeJobId = useGameStore((state) => state.progress.activeJobId);
 
-  const canAccept = canAcceptJob(player, job);
-  const blockReason = getAcceptJobBlockReason(player, job);
-  const isAccepted =
-    job.status === "accepted" || job.status === "in_progress";
+  const displayStatus = deriveDisplayStatus(job, claimed);
+  const blockReason = getAcceptJobBlockReason(player, job, claimed);
+  const canAccept = displayStatus === "available";
+  const isActive =
+    job.status === "accepted" ||
+    job.status === "in_progress" ||
+    activeJobId === job.id;
+  const isDone = displayStatus === "completed";
 
   return (
     <article className="max-w-xl border-b border-stone-200 py-6">
@@ -27,7 +36,7 @@ export function JobCard({ job }: JobCardProps) {
           {job.title}
         </h2>
         <span className="text-xs uppercase tracking-wide text-stone-500">
-          {job.status.replace("_", " ")}
+          {displayStatus.replace("_", " ")}
         </span>
       </div>
       <p className="mb-4 max-w-prose text-stone-600">{job.description}</p>
@@ -41,32 +50,36 @@ export function JobCard({ job }: JobCardProps) {
           <dd className="font-medium">{"★".repeat(job.difficulty)}</dd>
         </div>
         <div>
-          <dt className="text-stone-500">Est. time</dt>
-          <dd className="font-medium">{job.estimatedMinutes} min</dd>
+          <dt className="text-stone-500">Targets</dt>
+          <dd className="font-medium">{job.objectiveIds.length} required</dd>
         </div>
       </dl>
       <div className="flex flex-wrap items-center gap-3">
-        {job.status === "available" ? (
+        {canAccept ? (
           <Button
             onClick={() => acceptJob(job.id)}
-            disabled={!canAccept}
             title={blockReason ?? undefined}
           >
             Accept Job
           </Button>
         ) : null}
-        {isAccepted ? (
+        {isActive && !isDone ? (
           <Link
             href="/yard"
             onClick={() => {
-              enterYardForActiveJob();
+              enterActiveJob();
             }}
             className="inline-flex items-center justify-center rounded-md bg-amber-100 px-4 py-2 text-sm font-medium text-amber-950 transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
           >
             Enter Yard
           </Link>
         ) : null}
-        {!canAccept && job.status === "available" && blockReason ? (
+        {isDone ? (
+          <span className="text-sm font-medium text-emerald-800">
+            Reward claimed
+          </span>
+        ) : null}
+        {displayStatus === "locked" && blockReason ? (
           <p className="text-sm text-amber-800">{blockReason}</p>
         ) : null}
       </div>

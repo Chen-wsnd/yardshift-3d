@@ -179,6 +179,8 @@ export const useGameStore = create<GameState>()(
           worldZ: partial.worldZ,
           strokeId: partial.strokeId,
           direction: partial.direction,
+          sweepSamples: partial.sweepSamples,
+          forwardMotion: partial.forwardMotion,
         };
         const profile = EQUIPMENT_PROFILES.find((p) => p.id === action.toolId);
         if (profile) action.action = profile.actionKind;

@@ -101,9 +101,14 @@ export function GardenShell() {
                 {!hydrated
                   ? "Restoring save…"
                   : activeTask
-                    ? activeTask.prompt.replace(/\?$/, ".")
+                    ? activeTask.designPurpose
                     : "Take a look around. What would you do first?"}
               </p>
+              {activeTask ? (
+                <p className="mt-0.5 hidden text-xs text-stone-400 sm:block">
+                  {activeTask.strengthsLimits}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">

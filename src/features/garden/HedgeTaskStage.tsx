@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useGameStore } from "@/game/store/gameStore";
-import { GardenWorldOverlays } from "./GardenWorldOverlays";
 
 export function HedgeTaskStage({
   onDragChange,
@@ -14,7 +13,7 @@ export function HedgeTaskStage({
   const cutHedgeCluster = useGameStore((s) => s.cutHedgeCluster);
   const dragging = useRef(false);
   const hit = useRef<Set<string>>(new Set());
-  const [cursor, setCursor] = useState<[number, number, number]>([5.4, 0.8, 0]);
+  const [cursor, setCursor] = useState<[number, number, number]>([6.4, 0.8, 1]);
 
   if (!clusters) return null;
   const powered = selectedToolId === "hedge-trimmer";
@@ -38,10 +37,9 @@ export function HedgeTaskStage({
 
   return (
     <group>
-      <GardenWorldOverlays includeLawn={false} />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[5.4, 0.02, 0]}
+        position={[6.4, 0.02, 1]}
         onPointerDown={(e) => {
           e.stopPropagation();
           dragging.current = true;
@@ -62,8 +60,8 @@ export function HedgeTaskStage({
           onDragChange?.(false);
         }}
       >
-        <planeGeometry args={[4, 10]} />
-        <meshStandardMaterial color="#6a8a55" />
+        <planeGeometry args={[4.5, 12]} />
+        <meshStandardMaterial color="#6a8a55" transparent opacity={0.35} />
       </mesh>
       {/* Visible tool proxy */}
       <mesh position={cursor}>

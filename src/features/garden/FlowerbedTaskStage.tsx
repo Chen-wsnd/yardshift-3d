@@ -1,7 +1,6 @@
 "use client";
 
 import { useGameStore } from "@/game/store/gameStore";
-import { GardenWorldOverlays } from "./GardenWorldOverlays";
 
 export function FlowerbedTaskStage() {
   const plants = useGameStore((s) => s.work.garden?.plants);
@@ -13,10 +12,9 @@ export function FlowerbedTaskStage() {
 
   return (
     <group>
-      <GardenWorldOverlays includeLawn={false} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[4.1, 0.02, 3.1]}>
-        <planeGeometry args={[4, 3.5]} />
-        <meshStandardMaterial color="#6b8f4a" />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-6.3, 0.02, 2.25]}>
+        <planeGeometry args={[3.5, 4]} />
+        <meshStandardMaterial color="#6b8f4a" transparent opacity={0.35} />
       </mesh>
       {Object.values(plants).map((p) => {
         if (p.rootRemoved) return null;

@@ -13,6 +13,7 @@ import { DebrisTaskStage } from "./DebrisTaskStage";
 import { FlowerbedTaskStage } from "./FlowerbedTaskStage";
 import { HazardTaskStage } from "./HazardTaskStage";
 import { EdgeTaskStage } from "./EdgeTaskStage";
+import { SceneRegistrationDebug } from "./SceneRegistrationDebug";
 
 export function GardenOverviewScene({
   activeTaskId,
@@ -23,6 +24,9 @@ export function GardenOverviewScene({
 }) {
   const [dragging, setDragging] = useState(false);
   const task = activeTaskId ? getGardenTask(activeTaskId) : null;
+  const debugPlacement =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("debugPlacement");
 
   return (
     <>
@@ -43,6 +47,7 @@ export function GardenOverviewScene({
             <GardenWorldOverlays />
           </Suspense>
           <GardenHotspots onSelect={onSelectTask} />
+          <SceneRegistrationDebug enabled={debugPlacement} />
           <OrbitControls
             makeDefault
             target={OVERVIEW_CAMERA.target}
@@ -54,6 +59,15 @@ export function GardenOverviewScene({
         </>
       ) : (
         <>
+          {/* Same Saturday garden base so task stages share overview world space */}
+          <Suspense fallback={null}>
+            <SaturdayGardenModel />
+            <GardenWorldOverlays
+              includeLawn={
+                activeTaskId === "edge" || activeTaskId === "hazard"
+              }
+            />
+          </Suspense>
           {activeTaskId === "lawn" ? (
             <LawnTaskStage onDragChange={setDragging} />
           ) : null}

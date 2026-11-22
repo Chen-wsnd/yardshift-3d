@@ -1,3 +1,8 @@
+import {
+  HEDGE_EAST_NODES,
+  MEASURED_DANDELIONS,
+  MEASURED_FLOWERS,
+} from "@/data/gardenPlacement";
 import type {
   DebrisEntity,
   GardenDomain,
@@ -16,26 +21,34 @@ function emptyEffort() {
   };
 }
 
-/** Deterministic hedge overgrowth along the east hedge line (garden coords). */
+/**
+ * Hedge overgrowth clusters along MEASURED east hedge (nodes 055–059 + corner).
+ * Positions offset lawn-ward so overlays sit on the face players can reach.
+ */
 export function createHedgeClusters(): Record<string, HedgeCluster> {
   const out: Record<string, HedgeCluster> = {};
-  // Align with hedge-block tiles near x≈6–7, z from -4..4 in starter scene
-  const positions = [
-    [5.2, -3.2],
-    [5.4, -1.6],
-    [5.5, 0],
-    [5.4, 1.6],
-    [5.2, 3.0],
-    [5.6, -2.4],
-    [5.7, -0.8],
-    [5.7, 0.8],
-    [5.6, 2.4],
-    [4.9, -3.8],
-    [4.9, 3.6],
-    [5.1, -0.2],
-  ] as const;
-  positions.forEach(([x, z], i) => {
+  HEDGE_EAST_NODES.forEach((node, i) => {
     const id = `hedge-cluster-${i}`;
+    // MANUAL_OFFSET: −0.65m X toward lawn from measured centre
+    out[id] = {
+      id,
+      x: node.center[0] - 0.65,
+      z: node.center[2],
+      cut: false,
+      overcut: false,
+    };
+  });
+  // Extra mid-face clusters between blocks for denser overgrowth
+  const extras: [number, number][] = [
+    [6.35, 4.0],
+    [6.35, 2.0],
+    [6.35, 0.0],
+    [6.35, -2.0],
+    [6.2, 5.8],
+    [6.35, -0.5],
+  ];
+  extras.forEach(([x, z], i) => {
+    const id = `hedge-cluster-extra-${i}`;
     out[id] = { id, x, z, cut: false, overcut: false };
   });
   return out;
@@ -43,15 +56,25 @@ export function createHedgeClusters(): Record<string, HedgeCluster> {
 
 export function createPlants(): Record<string, PlantEntity> {
   const out: Record<string, PlantEntity> = {};
-  // Flowerbed near lawn right border / flower pieces (~x 4–6, z 2–4)
-  const weeds: [number, number][] = [
-    [3.8, 3.2],
-    [4.1, 2.6],
-    [4.4, 3.5],
-    [3.6, 2.9],
+  MEASURED_DANDELIONS.forEach((d) => {
+    out[d.id] = {
+      id: d.id,
+      kind: "weed",
+      x: d.x,
+      z: d.z,
+      topCut: false,
+      rootRemoved: false,
+      ornamentalDamage: false,
+    };
+  });
+  // Extra weeds along west flower border (near MEASURED border pieces)
+  const borderWeeds: [number, number][] = [
+    [-6.0, 1.8],
+    [-6.05, 2.6],
+    [-5.95, 3.2],
   ];
-  weeds.forEach(([x, z], i) => {
-    const id = `weed-${i}`;
+  borderWeeds.forEach(([x, z], i) => {
+    const id = `weed-border-${i}`;
     out[id] = {
       id,
       kind: "weed",
@@ -62,18 +85,12 @@ export function createPlants(): Record<string, PlantEntity> {
       ornamentalDamage: false,
     };
   });
-  const flowers: [number, number][] = [
-    [4.0, 3.0],
-    [4.3, 3.3],
-    [3.9, 2.7],
-  ];
-  flowers.forEach(([x, z], i) => {
-    const id = `flower-${i}`;
-    out[id] = {
-      id,
+  MEASURED_FLOWERS.forEach((f) => {
+    out[f.id] = {
+      id: f.id,
       kind: "flower",
-      x,
-      z,
+      x: f.x,
+      z: f.z,
       topCut: false,
       rootRemoved: false,
       ornamentalDamage: false,
@@ -86,7 +103,7 @@ export function createHazards(): Record<string, HazardEntity> {
   return {
     "lawn-stone-1": {
       id: "lawn-stone-1",
-      // NW lawn corner — discoverable, off common centreline mow paths
+      // NW of P0 lawn work grid — discoverable, off centreline mow tests
       x: -3.6,
       z: 3.1,
       cleared: false,
@@ -95,8 +112,9 @@ export function createHazards(): Record<string, HazardEntity> {
     },
     "hedge-hardwood-1": {
       id: "hedge-hardwood-1",
-      x: 5.5,
-      z: -1.0,
+      // Near measured hedge 057 (7, 0.999) — lawn-ward face
+      x: 6.35,
+      z: 1.0,
       cleared: false,
       blocks: ["hedge-trimmer"],
       label: "Thick entangled wood in the hedge",
@@ -104,14 +122,14 @@ export function createHazards(): Record<string, HazardEntity> {
   };
 }
 
-/** Light initial leaf scatter near tree/path for debris task. */
+/** Initial leaf scatter near MEASURED path slabs (south-west). */
 export function createInitialDebris(): Record<string, DebrisEntity> {
   const spots: [number, number][] = [
-    [-3.5, -4.5],
-    [-2.8, -4.2],
-    [-3.2, -5.0],
-    [2.5, -4.8],
-    [3.0, -4.4],
+    [-4.5, -4.4],
+    [-3.5, -4.2],
+    [-2.8, -4.5],
+    [-5.2, -3.8],
+    [-3.0, -3.9],
   ];
   const out: Record<string, DebrisEntity> = {};
   spots.forEach(([x, z], i) => {

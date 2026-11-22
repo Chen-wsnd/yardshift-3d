@@ -1,7 +1,6 @@
 "use client";
 
 import { useGameStore } from "@/game/store/gameStore";
-import { GardenWorldOverlays } from "./GardenWorldOverlays";
 
 export function HazardTaskStage() {
   const hazards = useGameStore((s) => s.work.garden?.hazards);
@@ -13,11 +12,6 @@ export function HazardTaskStage() {
 
   return (
     <group>
-      <GardenWorldOverlays />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <planeGeometry args={[14, 12]} />
-        <meshStandardMaterial color="#6a9a4e" />
-      </mesh>
       {Object.values(hazards).map((h) => {
         if (h.cleared) return null;
         const seen = inspection?.[h.id]?.observed;

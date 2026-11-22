@@ -8,20 +8,23 @@ import { LawnOverviewOverlay } from "./LawnOverviewOverlay";
 
 function HedgeOverlays() {
   const clusters = useGameStore((s) => s.work.garden?.hedgeClusters);
+  const { scene } = useGLTF(MODEL_CATALOG.hedge_block.localPath);
+  const proto = useMemo(() => scene.clone(true), [scene]);
   if (!clusters) return null;
   return (
     <group>
       {Object.values(clusters).map((c) => (
-        <mesh
+        <group
           key={c.id}
-          position={[c.x, c.cut ? 0.55 : 0.95, c.z]}
-          scale={c.cut ? [0.7, c.overcut ? 0.45 : 0.7, 0.7] : [1, 1, 1]}
+          position={[c.x, 0, c.z]}
+          scale={
+            c.cut
+              ? [0.55, c.overcut ? 0.35 : 0.55, 0.55]
+              : [0.75, 0.85, 0.75]
+          }
         >
-          <sphereGeometry args={[0.35, 8, 8]} />
-          <meshStandardMaterial
-            color={c.overcut ? "#3a2818" : c.cut ? "#3d6b35" : "#1f4a1c"}
-          />
-        </mesh>
+          <primitive object={proto.clone(true)} />
+        </group>
       ))}
     </group>
   );
@@ -106,14 +109,15 @@ export function GardenWorldOverlays({ includeLawn = true }: { includeLawn?: bool
   return (
     <group>
       {includeLawn ? <LawnOverviewOverlay /> : null}
-      <HedgeOverlays />
-      <DebrisOverlays />
-      <HazardOverlays />
       <Suspense fallback={null}>
+        <HedgeOverlays />
         <PlantOverlays />
       </Suspense>
+      <DebrisOverlays />
+      <HazardOverlays />
     </group>
   );
 }
 
 useGLTF.preload(MODEL_CATALOG.dandelion.localPath);
+useGLTF.preload(MODEL_CATALOG.hedge_block.localPath);

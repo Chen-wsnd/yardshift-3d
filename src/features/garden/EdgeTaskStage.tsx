@@ -6,9 +6,8 @@ import { LAWN_ZONE_ID } from "@/data/lawnGrid";
 import { interpolateSamples } from "@/game/work/lawnSweep";
 import { V03_GARDEN_JOB_ID } from "@/game/work/gardenFixtures";
 import { LawnFootprintLayer } from "./LawnFootprintLayer";
-import { GardenWorldOverlays } from "./GardenWorldOverlays";
 
-/** Narrow edge strip along south lawn — uses same lawn cells near z max. */
+/** Narrow edge strip along path–lawn interface (measured path south of grid). */
 export function EdgeTaskStage({
   onDragChange,
 }: {
@@ -25,11 +24,10 @@ export function EdgeTaskStage({
 
   return (
     <group>
-      <GardenWorldOverlays includeLawn={false} />
       <LawnFootprintLayer cells={zone.cells} />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.03, 3.6]}
+        position={[0, 0.03, -3.6]}
         onPointerDown={(e) => {
           e.stopPropagation();
           dragging.current = true;
@@ -45,9 +43,9 @@ export function EdgeTaskStage({
           const prev = last.current;
           last.current = { x: e.point.x, z: e.point.z };
           if (!prev) return;
-          // Only allow work near the south edge band
-          if (e.point.z < 2.5) return;
-          const samples = interpolateSamples(prev, e.point, 0.4);
+          // Path–lawn interface (south of work grid, near measured path)
+          if (e.point.z > -2.6 || e.point.z < -4.2) return;
+          const samples = interpolateSamples(prev, e.point, 0.35);
           performWorkAction({
             jobId: V03_GARDEN_JOB_ID,
             zoneId: LAWN_ZONE_ID,
@@ -68,7 +66,7 @@ export function EdgeTaskStage({
         }}
       >
         <planeGeometry args={[10, 2.2]} />
-        <meshBasicMaterial transparent opacity={0.15} color="#cde" />
+        <meshBasicMaterial transparent opacity={0.18} color="#cde" />
       </mesh>
     </group>
   );

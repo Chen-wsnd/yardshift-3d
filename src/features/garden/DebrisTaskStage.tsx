@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useGameStore } from "@/game/store/gameStore";
-import { GardenWorldOverlays } from "./GardenWorldOverlays";
 
 export function DebrisTaskStage({
   onDragChange,
@@ -15,7 +14,7 @@ export function DebrisTaskStage({
   const bagNearbyPiles = useGameStore((s) => s.bagNearbyPiles);
   const dragging = useRef(false);
   const last = useRef<{ x: number; z: number } | null>(null);
-  const [pos, setPos] = useState<[number, number, number]>([-2.5, 0.2, -4.5]);
+  const [pos, setPos] = useState<[number, number, number]>([-3.0, 0.2, -4.2]);
 
   const onMove = (x: number, z: number) => {
     const prev = last.current;
@@ -35,10 +34,9 @@ export function DebrisTaskStage({
 
   return (
     <group>
-      <GardenWorldOverlays includeLawn={false} />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[-2, 0.02, -4.2]}
+        position={[-3.2, 0.02, -4.0]}
         onPointerDown={(e) => {
           e.stopPropagation();
           if (selectedToolId === "bag") {
@@ -64,7 +62,7 @@ export function DebrisTaskStage({
         }}
       >
         <planeGeometry args={[10, 6]} />
-        <meshStandardMaterial color="#7a9a5a" />
+        <meshStandardMaterial color="#7a9a5a" transparent opacity={0.3} />
       </mesh>
       <mesh position={pos}>
         <cylinderGeometry args={[0.08, 0.12, 0.9, 6]} />

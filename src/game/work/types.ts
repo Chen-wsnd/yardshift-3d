@@ -161,7 +161,8 @@ export interface WorkJobState {
 }
 
 export interface WorkSnapshot {
-  schemaVersion: 2;
+  /** 2 = legacy multi-job board; 3 = garden overview lawn slice */
+  schemaVersion: 2 | 3;
   balance: number;
   ownedToolIds: string[];
   rentedToolIds: string[];

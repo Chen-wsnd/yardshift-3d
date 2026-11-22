@@ -131,19 +131,32 @@ export function WorkCellVisual({
   useModels?: boolean;
 }) {
   if (useModels && kind === "lawn" && !cell.isPile) {
-    const entry =
-      cell.remainingWork <= 0 || cell.result === "finished" || cell.result === "scalped"
-        ? MODEL_CATALOG.lawn_cut
-        : MODEL_CATALOG.lawn_uncut;
+    const finished =
+      cell.remainingWork <= 0 ||
+      cell.result === "finished" ||
+      cell.result === "scalped";
+    const partial =
+      !finished &&
+      (cell.result === "partial" || cell.remainingWork < 100);
+    const entry = finished
+      ? MODEL_CATALOG.lawn_cut
+      : MODEL_CATALOG.lawn_uncut;
     return (
-      <Suspense
-        fallback={<ProceduralCell cell={cell} kind={kind} />}
-      >
-        <Glb
-          path={entry.localPath}
-          scale={0.95}
-          position={[cell.localX, 0, cell.localZ]}
-        />
+      <Suspense fallback={<ProceduralCell cell={cell} kind={kind} />}>
+        <group>
+          <Glb
+            path={entry.localPath}
+            scale={partial ? 0.9 : 0.95}
+            position={[cell.localX, 0, cell.localZ]}
+          />
+          {partial ? (
+            <Glb
+              path={MODEL_CATALOG.lawn_cut.localPath}
+              scale={0.55}
+              position={[cell.localX, 0.02, cell.localZ]}
+            />
+          ) : null}
+        </group>
       </Suspense>
     );
   }

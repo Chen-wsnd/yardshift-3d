@@ -18,6 +18,7 @@ export function FocusedWorkView() {
 
   const lastStrokeAt = useRef(0);
   const lastCell = useRef<string | null>(null);
+  const lastPoint = useRef<{ x: number; z: number } | null>(null);
   const dragging = useRef(false);
 
   if (!zone || !jobId) return null;
@@ -32,6 +33,15 @@ export function FocusedWorkView() {
     lastStrokeAt.current = now;
     lastCell.current = cellId ?? null;
     const point = e.point;
+    let direction: [number, number] = [1, 0];
+    const prev = lastPoint.current;
+    if (prev) {
+      const dx = point.x - prev.x;
+      const dz = point.z - prev.z;
+      const len = Math.hypot(dx, dz);
+      if (len > 0.02) direction = [dx / len, dz / len];
+    }
+    lastPoint.current = point;
     performWorkAction({
       zoneId: zone.id,
       toolId: selectedToolId,
@@ -39,7 +49,7 @@ export function FocusedWorkView() {
       worldX: point.x,
       worldZ: point.z,
       strokeId: `${now}-${cellId ?? "ground"}`,
-      direction: dragging.current ? [1, 0] : [1, 0],
+      direction,
     });
   };
 
@@ -67,6 +77,7 @@ export function FocusedWorkView() {
               onPointerUp={(e) => {
                 e.stopPropagation();
                 dragging.current = false;
+                lastPoint.current = null;
               }}
             >
               <boxGeometry args={[1.5, 0.9, 1.5]} />

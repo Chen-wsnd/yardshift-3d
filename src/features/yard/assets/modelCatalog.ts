@@ -136,4 +136,13 @@ export const MODEL_CATALOG: Record<string, ModelCatalogEntry> = {
     yOffset: 0,
     fallback: "procedural",
   },
+  saturday_morning_back_garden: {
+    role: "overview_scene",
+    localPath: "/assets/models/yardshift-kit/saturday-morning-back-garden.glb",
+    sourceUrl: "https://cdn.3dassets.dev/assets/27418/v1/model.glb",
+    license: "CC0 1.0 Universal (3DAssets.dev)",
+    scale: 1,
+    yOffset: 0,
+    fallback: "procedural",
+  },
 };

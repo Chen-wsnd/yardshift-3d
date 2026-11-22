@@ -1,10 +1,8 @@
 # YardShift 3D
 
-Browser-based 3D gardening simulation. Accept yard cleanup jobs, use real-world-inspired tools on interactive targets, earn credits, unlock a second job, and buy advanced equipment.
+Browser-based 3D gardening simulation. One memorable home garden, discoverable work areas, and tool operations that visually teach a consequence.
 
-**v0.1 gameplay** — two playable jobs, eight tools, shop, rewards, persistence, and Reset Demo.
-
-**Visual pass** (`feature/asset-visual-pass`) — CC0 grass PBR ground, upgraded lighting/fence/decor, clearer dirty→clean target visuals, invisible click proxies. See `docs/ASSET_MANIFEST.md`.
+**Current playtest path:** v0.3 Gate 1 lawn vertical slice (`feature/v03-lawn-vertical-slice`).
 
 ## Stack
 
@@ -28,28 +26,37 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run test` | Vitest |
 | `npm run typecheck` | `tsc --noEmit` |
 
-## Play loop
+## Play loop (v0.3 lawn slice)
 
-1. **Task Board (`/`)** — Accept **Overgrown Lawn** (Job 1).
-2. **Yard (`/yard`)** — Select a tool, click matching cleanup targets (8 required).
-3. **Claim reward** — +500 credits; Job 2 and the shop unlock.
-4. **Backyard Restoration** — Advanced tools via shop or demo loaners; 7 targets; +350 credits.
-5. **Reset Demo** — Clears progress for a fresh run (persisted in `localStorage`).
+1. **Garden overview (`/`)** — one CC0 residential garden; soft lawn hotspot.
+2. **Confirm** — “Mow the front lawn?”
+3. **Task stage** — drag a **visible** reel or powered mower; partial strips and flower damage persist.
+4. **Return** — overview lawn overlays update from the same work state.
+5. Legacy v0.2 board remains at `/legacy` (economy / second job hidden from primary path).
+
+Save key: `yardshift-v03` (does not wipe `yardshift-v02`).
+
+## Assets & Credits
+
+Full tables: [docs/ASSET_MANIFEST.md](docs/ASSET_MANIFEST.md) · [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md) · Gate report: [docs/V03_GATE0_GATE1_REPORT.md](docs/V03_GATE0_GATE1_REPORT.md)
+
+| Resource | Creator | License | Local path |
+|---|---|---|---|
+| Saturday morning back garden | 3D Assets | CC0 1.0 | `public/assets/models/yardshift-kit/saturday-morning-back-garden.glb` |
+| Lawn Mowing Simulator Kit parts | 3D Assets | CC0 1.0 | `public/assets/models/yardshift-kit/*.glb` |
+| Grass 001 textures | ambientCG | CC0 1.0 | `public/assets/textures/grass/` |
+| Grass Blade (technique reference only) | Paul Robello | MIT | *not vendored* |
 
 ## Layout
 
 ```
-src/app/                 Routes
-src/features/jobs/       Task board, completion modal
-src/features/yard/       3D scene + interactions
-src/features/tools/      Tool dock
-src/features/economy/    Balance + shop
-src/game/types|store|rules
-src/data/                Tools, jobs, yard layouts
-docs/                    Architecture, one-shot build, execution log
+src/app/                 Routes (/ garden, /legacy, /yard, /gate0-preview)
+src/features/garden/     v0.3 overview + lawn task stage
+src/features/yard/       Shared 3D visuals / kit catalog
+src/game/work|store      Work-cell engine (v0.2 reused)
+src/data/                Equipment, zones, garden scene hide list
+docs/                    Specs, manifests, Gate 0–1 report
 ```
-
-See [docs/CURSOR_ONE_SHOT_BUILD.md](docs/CURSOR_ONE_SHOT_BUILD.md) and [docs/EXECUTION_LOG.md](docs/EXECUTION_LOG.md).
 
 ## License
 

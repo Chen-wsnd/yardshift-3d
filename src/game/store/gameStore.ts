@@ -17,15 +17,18 @@ import {
 } from "@/game/rules/qualityRules";
 import { applyWorkAction } from "@/game/work/engine";
 import { createFreshV02Snapshot, makeJobState } from "@/game/work/fixtures";
+import { createFreshV03GardenSnapshot } from "@/game/work/gardenFixtures";
 import { feesForJob } from "@/game/work/selectors";
 import type { WorkAction, WorkEvent, WorkSnapshot } from "@/game/work/types";
 
-const PERSIST_KEY = "yardshift-v02";
+/** New garden path. Leaves legacy `yardshift-v02` saves untouched. */
+const PERSIST_KEY = "yardshift-v03";
 
 interface GameState {
   work: WorkSnapshot;
   hydrated: boolean;
   setHydrated: (v: boolean) => void;
+  startV03Garden: () => void;
   startV02Demo: () => void;
   resetDemo: () => void;
   acceptJob: (jobId: string) => boolean;
@@ -45,13 +48,21 @@ interface GameState {
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      work: createFreshV02Snapshot(),
+      work: createFreshV03GardenSnapshot(),
       hydrated: false,
       setHydrated: (v) => set({ hydrated: v }),
 
+      startV03Garden: () => set({ work: createFreshV03GardenSnapshot() }),
+
       startV02Demo: () => set({ work: createFreshV02Snapshot() }),
 
-      resetDemo: () => set({ work: createFreshV02Snapshot() }),
+      resetDemo: () =>
+        set({
+          work:
+            get().work.schemaVersion === 3
+              ? createFreshV03GardenSnapshot()
+              : createFreshV02Snapshot(),
+        }),
 
       isJobUnlocked: (jobId) => {
         const { work } = get();
@@ -383,7 +394,7 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: PERSIST_KEY,
-      version: 2,
+      version: 3,
       partialize: (state) => ({ work: state.work }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);

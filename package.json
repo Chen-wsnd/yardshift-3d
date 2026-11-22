@@ -4,7 +4,7 @@
   "private": true,
   "description": "YardShift 3D — browser-based 3D gardening simulation",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

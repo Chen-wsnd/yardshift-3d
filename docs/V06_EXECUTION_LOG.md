@@ -13,6 +13,8 @@
 | External backup (M7 WIP) | `/Users/junhanchen/Desktop/yardshift-v06-recovery-m7-20261122-155540` |
 | Checkpoint 1 | `46c481b` — `wip(v06): checkpoint recovered M0-M6 implementation` |
 | Checkpoint 2 | `0c97e0e` — `wip(v06): checkpoint M7 placement wiring and sweepSamples fix` |
+| Delivery HEAD | `c589d2a` — `test(v06): objective matrix and M7 delivery log` |
+| Remote | `origin/feature/v06-yardshift-full-experience` @ `c589d2a` (pushed; main not merged) |
 
 ## Milestone status
 

@@ -48,17 +48,24 @@ export function GardenHotspots({
               opacity={opacity}
               depthWrite={false}
             />
-            {hovered === task.id ? (
-              <Html distanceFactor={18} position={[0, 0.4, 0]} center>
-                <div className="rounded bg-[#f7f3ea]/95 px-2 py-1 text-xs text-stone-800 shadow">
-                  <div className="font-medium">{task.name}</div>
-                  <div className="text-[10px] text-stone-500">
-                    {known ? task.designPurpose.slice(0, 72) : "Unconfirmed area — explore"}
-                    {known ? "" : "…"}
+            <Html distanceFactor={18} position={[0, 0.45, 0]} center>
+              <div
+                className={`pointer-events-none rounded px-2 py-1 text-xs shadow ${
+                  hovered === task.id
+                    ? "bg-[#f7f3ea]/95 text-stone-800"
+                    : "bg-white/70 text-stone-700"
+                }`}
+              >
+                <div className="font-medium">{task.name}</div>
+                {hovered === task.id ? (
+                  <div className="max-w-[140px] text-[10px] text-stone-500">
+                    {known
+                      ? task.designPurpose.slice(0, 72)
+                      : "Unconfirmed — explore / Inspect for more"}
                   </div>
-                </div>
-              </Html>
-            ) : null}
+                ) : null}
+              </div>
+            </Html>
           </mesh>
         );
       })}

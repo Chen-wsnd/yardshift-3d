@@ -42,18 +42,21 @@ function DebrisOverlays() {
         .map((d) => (
           <mesh
             key={d.id}
-            position={[d.x, d.state === "gathered" ? 0.18 : 0.06, d.z]}
+            position={[d.x, d.state === "gathered" ? 0.08 : 0.03, d.z]}
+            rotation={[-Math.PI / 2, 0, 0]}
             onClick={(e) => {
               e.stopPropagation();
               setFocusPoint({ x: d.x, z: d.z });
               setActiveGardenTask("debris");
             }}
           >
-            <sphereGeometry
-              args={[d.state === "gathered" ? 0.28 : 0.12, 6, 6]}
+            <circleGeometry
+              args={[d.state === "gathered" ? 0.38 : 0.16, 10]}
             />
             <meshStandardMaterial
               color={d.kind === "clipping" ? "#5a7a3a" : "#c4a35a"}
+              transparent
+              opacity={0.92}
             />
           </mesh>
         ))}
@@ -98,13 +101,32 @@ function PlantOverlays() {
             </group>
           );
         }
+        // Simple flower silhouette — distinct from weed GLB (G09)
+        const bloom = p.ornamentalDamage ? "#4a3020" : "#e07090";
         return (
-          <mesh key={p.id} position={[p.x, 0.25, p.z]}>
-            <sphereGeometry args={[0.14, 8, 8]} />
-            <meshStandardMaterial
-              color={p.ornamentalDamage ? "#4a3020" : "#e07090"}
-            />
-          </mesh>
+          <group key={p.id} position={[p.x, 0, p.z]}>
+            <mesh position={[0, 0.12, 0]}>
+              <cylinderGeometry args={[0.02, 0.025, 0.24, 6]} />
+              <meshStandardMaterial color="#3d6b2e" />
+            </mesh>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <mesh
+                key={i}
+                position={[
+                  Math.cos((i / 5) * Math.PI * 2) * 0.08,
+                  0.28,
+                  Math.sin((i / 5) * Math.PI * 2) * 0.08,
+                ]}
+              >
+                <sphereGeometry args={[0.05, 6, 6]} />
+                <meshStandardMaterial color={bloom} />
+              </mesh>
+            ))}
+            <mesh position={[0, 0.28, 0]}>
+              <sphereGeometry args={[0.035, 6, 6]} />
+              <meshStandardMaterial color={p.ornamentalDamage ? "#2a1810" : "#f5d76e"} />
+            </mesh>
+          </group>
         );
       })}
     </group>

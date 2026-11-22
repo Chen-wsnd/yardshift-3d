@@ -46,6 +46,24 @@ function withGarden(work: WorkSnapshot): WorkSnapshot {
   return { ...work, garden: createFreshGardenDomain() };
 }
 
+/** After Finish, world mutations are frozen until Try again (G04 / Q28). */
+function sealedBlock(work: WorkSnapshot): WorkSnapshot | null {
+  if (!work.garden?.visitFinished) return null;
+  return {
+    ...work,
+    lastEvents: [
+      {
+        id: "visit-sealed",
+        kind: "ineffective",
+        zoneId: "",
+        toolId: work.selectedToolId ?? "",
+        explanation:
+          "This visit is sealed. Open Work review, or Try again (same yard) for a new attempt.",
+      },
+    ],
+  };
+}
+
 interface GameState {
   work: WorkSnapshot;
   hydrated: boolean;
@@ -182,6 +200,11 @@ export const useGameStore = create<GameState>()(
 
       performWorkAction: (partial) => {
         const { work } = get();
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return [];
+        }
         const jobId = partial.jobId ?? work.activeJobId;
         if (!jobId || !work.selectedToolId) return [];
         const action: WorkAction = {
@@ -437,6 +460,10 @@ export const useGameStore = create<GameState>()(
 
       rechargeTool: (toolId) => {
         const work = withGarden(get().work);
+        if (work.garden?.visitFinished) {
+          set({ work: sealedBlock(work)! });
+          return { ok: false, reason: "Visit sealed — try again to continue work." };
+        }
         const tool = work.tools[toolId];
         if (!tool) return { ok: false, reason: "Unknown tool." };
         const result = applyRecharge(tool);
@@ -545,6 +572,11 @@ export const useGameStore = create<GameState>()(
       removeHazard: (hazardId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         const h = work.garden.hazards[hazardId];
         if (!h || h.cleared) return;
         set({
@@ -572,6 +604,11 @@ export const useGameStore = create<GameState>()(
       cutHedgeCluster: (clusterId, toolId, overcut) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         const powered = toolId === "hedge-trimmer";
         const tool = work.tools[toolId];
         if (!tool) return;
@@ -597,7 +634,7 @@ export const useGameStore = create<GameState>()(
           return;
         }
         // Block powered trimmer near uncleared hardwood hazard
-        const blocked = Object.values(work.garden.hazards).some(
+        const hazardBlocks = Object.values(work.garden.hazards).some(
           (h) =>
             !h.cleared &&
             h.blocks.includes(toolId) &&
@@ -606,7 +643,7 @@ export const useGameStore = create<GameState>()(
               h.z - (work.garden!.hedgeClusters[clusterId]?.z ?? 99),
             ) < 1.2,
         );
-        if (blocked) {
+        if (hazardBlocks) {
           set({
             work: {
               ...work,
@@ -658,6 +695,11 @@ export const useGameStore = create<GameState>()(
       pullWeed: (plantId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         const toolId = work.selectedToolId ?? "hand-weeder";
         if (toolId !== "hand-weeder") {
           set({
@@ -738,6 +780,11 @@ export const useGameStore = create<GameState>()(
       topCutWeed: (plantId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         const toolId = work.selectedToolId ?? "string-trimmer";
         if (toolId !== "string-trimmer") {
           set({
@@ -819,6 +866,11 @@ export const useGameStore = create<GameState>()(
       damageFlower: (plantId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         set({
           work: {
             ...work,
@@ -844,6 +896,11 @@ export const useGameStore = create<GameState>()(
       rakeDebris: (x, z, dx, dz) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         let garden = gatherNearbyDebris(
           work.garden,
           x + dx * 0.4,
@@ -883,6 +940,11 @@ export const useGameStore = create<GameState>()(
       blowDebris: (x, z, dirX, dirZ) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         const tool = work.tools["leaf-blower"];
         if (!tool) return;
         const guard = guardAndConsumeTool(tool, "leaf-blower", {
@@ -967,6 +1029,11 @@ export const useGameStore = create<GameState>()(
       bagNearbyPiles: (x, z) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         const { domain, bagged } = bagDebrisAt(
           work.garden,
           x,
@@ -1048,6 +1115,11 @@ export const useGameStore = create<GameState>()(
       applyEdgeWork: (x, z, samples) => {
         const work = withGarden(get().work);
         if (!work.garden || !work.selectedToolId) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         const toolId = work.selectedToolId;
         if (toolId !== "hand-edger" && toolId !== "string-trimmer") {
           set({
@@ -1152,6 +1224,16 @@ export const useGameStore = create<GameState>()(
       finishVisit: () => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        // Idempotent: already sealed — only reopen review (Q28)
+        if (work.garden.visitFinished) {
+          set({
+            work: {
+              ...work,
+              garden: { ...work.garden, reviewOpen: true },
+            },
+          });
+          return;
+        }
         const sealed = buildVisitSummary(
           work.garden,
           work,
@@ -1160,7 +1242,7 @@ export const useGameStore = create<GameState>()(
         let garden = applyGardenEvent(work.garden, {
           id: `visit-finish:${work.garden.events.length}`,
           type: "VISIT_FINISHED",
-          summaryNote: `Sealed ${sealed.qualityBand} visit (${Math.round(sealed.final.lawnPct)}% lawn / ${Math.round(sealed.final.edgePct)}% edge).`,
+          summaryNote: `Sealed ${sealed.qualityBand} visit (${Math.round(sealed.final.lawnPct)}% lawn / ${Math.round(sealed.final.edgePct)}% edge). Game-modeled effort, not real work minutes.`,
         });
         const history = [...(garden.visitHistory ?? []), sealed].slice(-3);
         garden = {
@@ -1168,8 +1250,16 @@ export const useGameStore = create<GameState>()(
           visitHistory: history,
           lastVisitNote: sealed.qualityBand,
           reviewOpen: true,
+          activeTaskId: null,
         };
-        set({ work: { ...work, garden } });
+        set({
+          work: {
+            ...work,
+            garden,
+            focusedZoneId: null,
+            selectedToolId: null,
+          },
+        });
       },
 
       finishJob: (early) => {

@@ -7,14 +7,14 @@ import type { WorkCell } from "@/game/work/types";
 import { lawnStepX, lawnStepZ } from "@/data/lawnGrid";
 
 const _obj = new Object3D();
-const COL_UNCUT = new Color("#2f5e28");
+const COL_UNCUT = new Color("#2a5524");
 const COL_PARTIAL = new Color("#5a9a45");
-const COL_CUT = new Color("#8fbf6a");
+const COL_CUT = new Color("#9bc978");
 const COL_DAMAGE = new Color("#6b3a2a");
 
 /**
  * Continuous footprint visualisation from fine lawn cells.
- * Tall = uncut, mid = partial, flat = cut, brown bump = flower damage.
+ * Softened tiles (less hard mosaic): tall uncut → flat bright cut.
  */
 export function LawnFootprintLayer({
   cells,
@@ -24,8 +24,9 @@ export function LawnFootprintLayer({
   y?: number;
 }) {
   const mesh = useRef<InstancedMesh>(null);
-  const sx = lawnStepX() * 0.92;
-  const sz = lawnStepZ() * 0.92;
+  // Slight overlap softens the grid look for learners (G06)
+  const sx = lawnStepX() * 1.02;
+  const sz = lawnStepZ() * 1.02;
 
   const grassCells = useMemo(
     () => cells.filter((c) => !c.isPile),
@@ -45,12 +46,12 @@ export function LawnFootprintLayer({
         !damaged &&
         (cell.result === "partial" || cell.remainingWork < 100);
       const height = damaged
-        ? 0.12
+        ? 0.1
         : finished
-          ? 0.04
+          ? 0.028
           : partial
-            ? 0.08 + (cell.remainingWork / 100) * 0.14
-            : 0.28;
+            ? 0.07 + (cell.remainingWork / 100) * 0.12
+            : 0.22;
       _obj.position.set(cell.localX, y + height * 0.5, cell.localZ);
       _obj.scale.set(sx, height, sz);
       _obj.updateMatrix();
@@ -76,7 +77,7 @@ export function LawnFootprintLayer({
       receiveShadow
     >
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial roughness={0.85} metalness={0.02} />
+      <meshStandardMaterial roughness={0.9} metalness={0} />
     </instancedMesh>
   );
 }

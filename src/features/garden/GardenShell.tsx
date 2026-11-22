@@ -41,6 +41,9 @@ export function GardenShell() {
 
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
+  const [lastToolByTask, setLastToolByTask] = useState<Record<string, string>>(
+    {},
+  );
 
   useEffect(() => {
     if (!hydrated) return;
@@ -83,10 +86,46 @@ export function GardenShell() {
   const needsJamClear = selected?.status === "jammed";
 
   const toolChoices = activeTask?.tools ?? [];
+  const visitSealed = Boolean(garden?.visitFinished);
+
+  const sceneFactFor = (taskId: string | null | undefined) => {
+    if (!taskId || !garden) return undefined;
+    if (taskId === "lawn") {
+      const stone = Object.values(garden.hazards).find(
+        (h) => !h.cleared && h.blocks.includes("lawn-mower"),
+      );
+      return stone
+        ? "Open grass with a possible stone in the NW lawn — check before powered blades."
+        : "Open grass near flower borders — width vs precision matters.";
+    }
+    if (taskId === "hedge") {
+      const wood = Object.values(garden.hazards).find(
+        (h) => !h.cleared && h.blocks.includes("hedge-trimmer"),
+      );
+      return wood
+        ? "Long east face; thick wood may block a powered bar until cleared."
+        : "Long east hedge face — soft growth vs long runs.";
+    }
+    if (taskId === "flowerbed")
+      return "Weeds beside ornamentals — tops vs roots are different jobs.";
+    if (taskId === "edge")
+      return "Path–lawn strip stays ragged even when open lawn looks done.";
+    if (taskId === "debris")
+      return "Scattered leaves and clippings at real ground positions — gather before bagging.";
+    if (taskId === "hazard")
+      return "Local risks block matching tools nearby, not the whole yard.";
+    return undefined;
+  };
 
   return (
     <AppShell showBalance={false}>
       <div className="relative flex h-[calc(100vh-57px)] min-h-[520px] flex-col">
+        {visitSealed ? (
+          <div className="shrink-0 bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-950">
+            Visit sealed — yard is view-only. Open Work review or Try again (same
+            yard) for a new attempt. Prior summaries (up to 3) are kept.
+          </div>
+        ) : null}
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 px-4 py-2 sm:px-6">
           <div className="flex items-center gap-3">
             {activeTaskId ? (
@@ -178,21 +217,25 @@ export function GardenShell() {
 
           <WorkConfirm
             key={pendingTaskId ?? "none"}
-            open={Boolean(pendingTask) && !activeTaskId}
+            open={Boolean(pendingTask) && !activeTaskId && !visitSealed}
             title={pendingTask?.prompt ?? "Start work?"}
             body={pendingTask?.strengthsLimits}
+            sceneFact={sceneFactFor(pendingTaskId)}
             toolIds={pendingTask?.tools}
-            preferredToolId={null}
+            lastUsedToolId={
+              pendingTaskId ? lastToolByTask[pendingTaskId] ?? null : null
+            }
             onCancel={() => setPendingTaskId(null)}
             onConfirm={(toolId) => {
-              if (!pendingTaskId) return;
+              if (!pendingTaskId || visitSealed) return;
               const task = getGardenTask(pendingTaskId);
               if (pendingTaskId === "debris" && task) {
                 setFocusPoint({ x: task.center[0], z: task.center[2] });
               }
+              if (!toolId) return;
+              setLastToolByTask((m) => ({ ...m, [pendingTaskId]: toolId }));
               setActiveGardenTask(pendingTaskId);
-              if (toolId) selectTool(toolId);
-              else if (task?.tools[0]) selectTool(task.tools[0]);
+              selectTool(toolId);
               setPendingTaskId(null);
             }}
           />

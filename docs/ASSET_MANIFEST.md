@@ -1,6 +1,6 @@
 # YardShift Asset Manifest
 
-Updated: 2026-11-22 — `feature/v06-professional-learning-loop` (from `e4bf150`)
+Updated: 2026-11-22 — `feature/v06-playable-learning-qa` (from `d8eb23c`)
 
 Status legend: `IN_REPO` · `ACTUALLY_USED` · `REFER_ONLY` · `CANDIDATE`
 

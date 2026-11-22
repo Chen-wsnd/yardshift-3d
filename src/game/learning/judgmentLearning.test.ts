@@ -10,6 +10,7 @@ import {
   gatherNearbyDebris,
 } from "@/game/garden/reducer";
 import { buildReviewSummary } from "@/game/garden/reviewSelectors";
+import { countPotentialRedirty } from "@/game/garden/spatialRework";
 import { createFreshV03GardenSnapshot } from "@/game/work/gardenFixtures";
 import { migrateLawnIfNeeded } from "@/game/work/gardenFixtures";
 import { useGameStore } from "@/game/store/gameStore";
@@ -129,7 +130,7 @@ describe("judgment learning J-matrix", () => {
     );
   });
 
-  it("J16/J17: SW clean + east cut no spent rework; same-area second clean spends", () => {
+  it("Q22: SW clean + east cut → spent rework stays 0", () => {
     let g = createFreshGardenDomain();
     const sw = Object.values(g.debris).find((d) => d.id.startsWith("leaf-sw"))!;
     g = gatherNearbyDebris(g, sw.x, sw.z, 2, "sw");
@@ -148,7 +149,13 @@ describe("judgment learning J-matrix", () => {
       effort: 0.5,
     });
     expect(g.effort.rework).toBe(0);
+  });
 
+  it("Q23/Q24: east clean → cut → potential; second clean spends rework", () => {
+    let g = createFreshGardenDomain();
+    const east = Object.values(g.debris).find((d) =>
+      d.id.startsWith("leaf-east"),
+    )!;
     g = gatherNearbyDebris(g, east.x, east.z, 1.5, "east-1");
     const ids = Object.values(g.debris)
       .filter((d) => d.state === "gathered")
@@ -160,28 +167,25 @@ describe("judgment learning J-matrix", () => {
       worldFootprint: { x: east.x, z: east.z, radius: 1.5 },
       effort: 0.4,
     });
+    expect(g.effort.rework).toBe(0);
+    const near = Object.values(g.hedgeClusters).sort(
+      (a, b) =>
+        Math.hypot(a.x - east.x, a.z - east.z) -
+        Math.hypot(b.x - east.x, b.z - east.z),
+    )[0];
     g = applyGardenEvent(g, {
-      id: `cut2:${near.id}`,
+      id: `cut:${near.id}`,
       type: "HEDGE_CLUSTER_CUT",
       clusterId: near.id,
       effort: 0.5,
     });
-    // already cut — no new debris; use another uncut near east
-    const other = Object.values(g.hedgeClusters).find((c) => !c.cut)!;
-    g = applyGardenEvent(g, {
-      id: `cut3:${other.id}`,
-      type: "HEDGE_CLUSTER_CUT",
-      clusterId: other.id,
-      effort: 0.5,
-    });
+    expect(g.effort.rework).toBe(0);
+    expect(countPotentialRedirty(g).count).toBeGreaterThan(0);
     const clip = Object.values(g.debris).find(
       (d) => d.kind === "clipping" && d.state === "scattered",
-    );
-    if (clip) {
-      g = gatherNearbyDebris(g, clip.x, clip.z, 1.5, "east-2");
-    }
-    // rework may or may not fire depending on footprint overlap — assert no crash
-    expect(g.effort.rework).toBeGreaterThanOrEqual(0);
+    )!;
+    g = gatherNearbyDebris(g, clip.x, clip.z, 1.5, "east-2");
+    expect(g.effort.rework).toBeGreaterThan(0);
   });
 
   it("J19: plan revise does not add wrong-order penalty", () => {

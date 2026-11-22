@@ -78,20 +78,44 @@ export function FlowerbedTaskStage() {
               />
             );
           }
+          const bloom = p.ornamentalDamage ? "#4a3020" : "#e07090";
           return (
-            <mesh
+            <group
               key={p.id}
-              position={[p.x, 0.25, p.z]}
+              position={[p.x, 0, p.z]}
               onClick={(e) => {
                 e.stopPropagation();
                 act(p.id);
               }}
             >
-              <sphereGeometry args={[0.16, 8, 8]} />
-              <meshStandardMaterial
-                color={p.ornamentalDamage ? "#4a3020" : "#e07090"}
-              />
-            </mesh>
+              <mesh position={[0, 0.12, 0]}>
+                <cylinderGeometry args={[0.02, 0.025, 0.24, 6]} />
+                <meshStandardMaterial color="#3d6b2e" />
+              </mesh>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <mesh
+                  key={i}
+                  position={[
+                    Math.cos((i / 5) * Math.PI * 2) * 0.09,
+                    0.3,
+                    Math.sin((i / 5) * Math.PI * 2) * 0.09,
+                  ]}
+                >
+                  <sphereGeometry args={[0.055, 6, 6]} />
+                  <meshStandardMaterial color={bloom} />
+                </mesh>
+              ))}
+              <mesh position={[0, 0.3, 0]}>
+                <sphereGeometry args={[0.04, 6, 6]} />
+                <meshStandardMaterial
+                  color={p.ornamentalDamage ? "#2a1810" : "#f5d76e"}
+                />
+              </mesh>
+              <mesh visible={false} position={[0, 0.25, 0]}>
+                <sphereGeometry args={[0.35, 8, 8]} />
+                <meshBasicMaterial />
+              </mesh>
+            </group>
           );
         })}
       </Suspense>

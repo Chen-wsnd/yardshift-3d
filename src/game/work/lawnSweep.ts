@@ -56,7 +56,8 @@ function cellsUnderSample(
   return out;
 }
 
-function pathLength(samples: SweepSample[]): number {
+/** Sum of consecutive sample segments — sample-count stable for a given world path. */
+export function pathLength(samples: SweepSample[]): number {
   let len = 0;
   for (let i = 1; i < samples.length; i++) {
     len += Math.hypot(

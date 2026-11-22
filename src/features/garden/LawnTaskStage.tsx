@@ -112,9 +112,13 @@ export function LawnTaskStage({
 
     const prev = lastPoint.current ?? origin;
     const clamped = clampPointerStep(prev, { x: point.x, z: point.z });
-    const samples = interpolateSamples(prev, clamped, cutWidth);
-    if (samples.length === 0) {
+    const interpolated = interpolateSamples(prev, clamped, cutWidth);
+    // Include stroke origin so pathLength covers the full world segment (G07)
+    const samples =
+      interpolated.length === 0 ? [] : [prev, ...interpolated];
+    if (samples.length < 2) {
       setMowerPos([clamped.x, 0, clamped.z]);
+      lastPoint.current = clamped;
       return;
     }
     const last = samples[samples.length - 1];

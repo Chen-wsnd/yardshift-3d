@@ -106,6 +106,11 @@ export interface ToolProfile {
   legacyId?: string;
 }
 
+export interface SweepSample {
+  x: number;
+  z: number;
+}
+
 export interface WorkAction {
   jobId: string;
   zoneId: string;
@@ -115,6 +120,13 @@ export interface WorkAction {
   worldZ: number;
   strokeId: string;
   direction?: [number, number];
+  /**
+   * P0 lawn batch: interpolated ground samples along a drag path.
+   * When present, engine applies one aggregated sweep instead of a single click stroke.
+   */
+  sweepSamples?: SweepSample[];
+  /** False when the drag moves opposite the facing direction (reel reverse). */
+  forwardMotion?: boolean;
 }
 
 export interface WorkEvent {

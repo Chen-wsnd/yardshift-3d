@@ -35,7 +35,7 @@ export function LawnHotspot({
       <meshBasicMaterial
         color={hovered ? "#c8e6a0" : "#9ccc65"}
         transparent
-        opacity={hovered ? 0.28 : 0.12}
+        opacity={hovered ? 0.22 : 0.04}
         depthWrite={false}
       />
     </mesh>

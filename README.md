@@ -2,7 +2,7 @@
 
 Browser-based 3D gardening simulation. One memorable home garden, discoverable work areas, and tool operations that visually teach a consequence.
 
-**Current playtest path:** v0.3 Gate 1 lawn vertical slice (`feature/v03-lawn-vertical-slice`).
+**Current playtest path:** P0 continuous lawn mowing (`feature/p0-resource-orchestration-lawn`).
 
 ## Stack
 
@@ -26,15 +26,15 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run test` | Vitest |
 | `npm run typecheck` | `tsc --noEmit` |
 
-## Play loop (v0.3 lawn slice)
+## Play loop (P0 lawn)
 
-1. **Garden overview (`/`)** — one CC0 residential garden; soft lawn hotspot.
-2. **Confirm** — “Mow the front lawn?”
-3. **Task stage** — drag a **visible** reel or powered mower; partial strips and flower damage persist.
-4. **Return** — overview lawn overlays update from the same work state.
-5. Legacy v0.2 board remains at `/legacy` (economy / second job hidden from primary path).
+1. **Garden overview (`/`)** — Saturday morning back garden; soft lawn hotspot.
+2. **Confirm** — “Mow this lawn?”
+3. **Task stage** — press-drag a **distinct** reel GLB or powered GLB; continuous path cuts; still clicks do nothing.
+4. **Return / refresh** — same fine-lawn state on overview (`yardshift-v03`).
+5. Legacy v0.2 board at `/legacy`.
 
-Save key: `yardshift-v03` (does not wipe `yardshift-v02`).
+See `docs/P0_RESOURCE_DECISIONS.md` and `docs/P0_DEMO_QA.md`.
 
 ## Assets & Credits
 
@@ -42,10 +42,12 @@ Full tables: [docs/ASSET_MANIFEST.md](docs/ASSET_MANIFEST.md) · [docs/THIRD_PAR
 
 | Resource | Creator | License | Local path |
 |---|---|---|---|
-| Saturday morning back garden | 3D Assets | CC0 1.0 | `public/assets/models/yardshift-kit/saturday-morning-back-garden.glb` |
-| Lawn Mowing Simulator Kit parts | 3D Assets | CC0 1.0 | `public/assets/models/yardshift-kit/*.glb` |
+| Saturday morning back garden | 3D Assets | CC0 1.0 | `saturday-morning-back-garden.glb` |
+| Rusty push reel mower | 3D Assets | CC0 1.0 | `manual-reel-mower.glb` |
+| Self-propelled mower | 3D Assets | CC0 1.0 | `mower.glb` |
+| Other kit props | 3D Assets | CC0 1.0 | `yardshift-kit/*.glb` |
 | Grass 001 textures | ambientCG | CC0 1.0 | `public/assets/textures/grass/` |
-| Grass Blade (technique reference only) | Paul Robello | MIT | *not vendored* |
+| Grass Blade (reference only) | Paul Robello | MIT | *not vendored* |
 
 ## Layout
 

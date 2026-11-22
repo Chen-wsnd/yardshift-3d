@@ -38,6 +38,12 @@ describe("v0.3 garden store", () => {
       worldZ: cell.localZ,
       strokeId: "t1",
       direction: [0.2, 0.9],
+      forwardMotion: true,
+      sweepSamples: [
+        { x: cell.localX - 0.3, z: cell.localZ },
+        { x: cell.localX, z: cell.localZ },
+        { x: cell.localX + 0.3, z: cell.localZ },
+      ],
     });
     const mid = g()
       .work.jobs["job-overgrown-lawn"].zones.find((z) => z.id === "j1-lawn")!

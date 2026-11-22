@@ -1,6 +1,6 @@
 # YardShift Asset Manifest
 
-Updated: 2026-11-22 — `feature/v03-lawn-vertical-slice` (Gate 0–1)
+Updated: 2026-11-22 — `feature/p0-resource-orchestration-lawn`
 
 ## Textures
 
@@ -19,7 +19,8 @@ Pack: https://3dassets.dev/packs/lawn-mowing-simulator-kit
 | saturday-morning-back-garden.glb | …/27418/v1/model.glb | db81ef30… | **v0.3 overview** (adapted: hide baked lawn/NPCs/mid-job mowers) |
 | lawn-uncut.glb | …/27387/v1/model.glb | 22060d94… | Lawn strips (overview + task) |
 | lawn-cut.glb | …/27385/v1/model.glb | d0ec6a1e… | Finished / partial lawn strips |
-| mower.glb | …/27334/v1/model.glb | 39900e2d… | **Visible task mower** |
+| mower.glb | …/27334/v1/model.glb | 39900e2d… | **Powered mower** (`wheel-roll`, `blade-spin`) |
+| manual-reel-mower.glb | …/27333/v1/model.glb | 1a5aaa7d… | **Rusty push reel** (new P0; distinct GLB) |
 | hedge-block.glb | …/27390/v1/model.glb | 8a5d6515… | Kit (Gate 2) |
 | dandelion.glb | …/27417/v1/model.glb | 91fa59f1… | Kit (Gate 2) |
 | picket-fence.glb | …/27388/v1/model.glb | | Kit |

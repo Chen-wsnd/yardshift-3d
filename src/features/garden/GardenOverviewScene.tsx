@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { OrbitControls } from "@react-three/drei";
 import { SaturdayGardenModel } from "./SaturdayGardenModel";
 import { LawnOverviewOverlay } from "./LawnOverviewOverlay";
@@ -15,9 +15,11 @@ export function GardenOverviewScene({
   mode: "overview" | "lawn-task";
   onSelectLawn: () => void;
 }) {
+  const [dragging, setDragging] = useState(false);
+
   return (
     <>
-      <color attach="background" args={["#b8d4ef"]} />
+      <color attach="background" args={["#9ebfe0"]} />
       <ambientLight intensity={0.7} />
       <directionalLight
         castShadow
@@ -39,20 +41,21 @@ export function GardenOverviewScene({
             target={OVERVIEW_CAMERA.target}
             maxPolarAngle={Math.PI / 2.15}
             minDistance={8}
-            maxDistance={28}
+            maxDistance={26}
             enablePan={false}
           />
         </>
       ) : (
         <>
-          <LawnTaskStage />
+          <LawnTaskStage onDragChange={setDragging} />
           <OrbitControls
             makeDefault
             target={[0, 0, 0]}
-            maxPolarAngle={Math.PI / 2.4}
-            minDistance={6}
-            maxDistance={18}
+            maxPolarAngle={Math.PI / 2.35}
+            minDistance={7}
+            maxDistance={16}
             enablePan={false}
+            enabled={!dragging}
           />
         </>
       )}

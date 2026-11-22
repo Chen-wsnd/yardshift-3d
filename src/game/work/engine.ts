@@ -5,6 +5,7 @@ import {
   markUnpoweredIfEmpty,
 } from "@/game/rules/durabilityRules";
 import { updateJobMetrics } from "@/game/rules/qualityRules";
+import { applyLawnSweep } from "./lawnSweep";
 import type {
   ToolInstance,
   WorkAction,
@@ -138,6 +139,11 @@ export function applyWorkAction(
       explanation: "You don't have this tool. Buy or rent it first.",
     });
     return { nextState: snap, events };
+  }
+
+  // P0 lawn path batch — single authoritative update for drag samples
+  if (action.sweepSamples && action.sweepSamples.length > 0) {
+    return applyLawnSweep(snap, action);
   }
 
   // Service actions

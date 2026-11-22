@@ -25,11 +25,21 @@
 - Source: https://ambientcg.com/view?id=Grass001
 - Local: `public/assets/textures/grass/`
 
+## 3DAssets.dev — Rusty Push Reel Mower
+
+- License: CC0 1.0 Universal
+- Page: https://3dassets.dev/assets/lawn-mowing-simulator-kit-rusty-push-reel-mower-a7e5847b
+- CDN: https://cdn.3dassets.dev/assets/27333/v1/model.glb
+- Local: `public/assets/models/yardshift-kit/manual-reel-mower.glb`
+- SHA-256: `1a5aaa7d87a5ef444854126620c6cc005b1bab64fcd1513e5c54b9e6b16a0198`
+- Animations used: `blade-spin`, `wheel-roll`
+- Credit (not required by CC0): 3D Assets (@3dassets)
+
 ## Open-source technique references (ideas only; no code copied)
 
 - Paul Robello, *Grass Blade* — https://github.com/paulrobello/grass-blade — MIT license  
-  Persistent cut footprint / cut-mask concepts studied for Gate 1; **no source files imported**.
+  Cut-trail / vegetation concepts studied for P0; **no source files imported**.
 - Konva / react-konva — https://github.com/konvajs/konva — MIT  
-  Evaluated for 2D tasks; **not installed** for the lawn slice.
+  Not installed for P0 (3D path mowing required).
 - Kenney Nature Kit — https://kenney.nl/assets/nature-kit — CC0  
-  Listed as Gate 2 foliage fallback; **not downloaded** for Gate 1.
+  Not downloaded for P0.

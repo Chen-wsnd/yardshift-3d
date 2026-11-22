@@ -1,61 +1,133 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
-import { useGLTF } from "@react-three/drei";
+import { Suspense, useEffect, useMemo, useRef } from "react";
+import { useAnimations, useGLTF } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
+import type { Group } from "three";
 import { MODEL_CATALOG } from "@/features/yard/assets/modelCatalog";
 
-function MowerGlb({
+type MowerKind = "manual-reel-mower" | "lawn-mower";
+
+function AnimatedMowerModel({
+  kind,
   position,
   yaw,
-  scale,
+  moving,
+  cutting,
 }: {
+  kind: MowerKind;
   position: [number, number, number];
   yaw: number;
-  scale: number;
+  moving: boolean;
+  cutting: boolean;
 }) {
-  const { scene } = useGLTF(MODEL_CATALOG.mower.localPath);
+  const path =
+    kind === "manual-reel-mower"
+      ? MODEL_CATALOG.manual_reel_mower.localPath
+      : MODEL_CATALOG.mower.localPath;
+  const { scene, animations } = useGLTF(path);
+  const root = useRef<Group>(null);
   const cloned = useMemo(() => scene.clone(true), [scene]);
+  const { actions } = useAnimations(animations, root);
+
+  useEffect(() => {
+    const wheel = actions["wheel-roll"];
+    const blade = actions["blade-spin"];
+    if (moving) {
+      wheel?.reset().fadeIn(0.08).play();
+    } else {
+      wheel?.fadeOut(0.1);
+      wheel?.stop();
+    }
+    // Reel: blade only while advancing; powered: while actively cutting
+    const bladeOn =
+      kind === "manual-reel-mower" ? moving && cutting : cutting;
+    if (bladeOn) {
+      blade?.reset().fadeIn(0.05).play();
+    } else {
+      blade?.fadeOut(0.1);
+      blade?.stop();
+    }
+    return () => {
+      wheel?.stop();
+      blade?.stop();
+    };
+  }, [actions, moving, cutting, kind]);
+
+  useFrame(() => {
+    if (root.current) {
+      root.current.position.set(position[0], position[1], position[2]);
+      root.current.rotation.y = yaw;
+    }
+  });
+
   return (
-    <primitive
-      object={cloned}
-      position={position}
-      rotation={[0, yaw, 0]}
-      scale={scale}
-    />
+    <group ref={root} position={position} rotation={[0, yaw, 0]}>
+      <primitive object={cloned} />
+    </group>
   );
 }
 
-/** Visible mower that follows the player stroke. */
+function FallbackMower({
+  kind,
+  position,
+  yaw,
+}: {
+  kind: MowerKind;
+  position: [number, number, number];
+  yaw: number;
+}) {
+  const powered = kind === "lawn-mower";
+  return (
+    <mesh position={position} rotation={[0, yaw, 0]}>
+      <boxGeometry args={[powered ? 0.7 : 0.55, 0.4, powered ? 1.0 : 0.85]} />
+      <meshStandardMaterial color={powered ? "#2a6db0" : "#8a5a3a"} />
+    </mesh>
+  );
+}
+
+/**
+ * Distinct GLBs for reel vs powered — natural scale (no fake resize).
+ * Animations play only when moving / actively cutting.
+ */
 export function MowerTool({
+  kind,
   position,
   direction,
-  powered,
+  moving,
+  cutting,
 }: {
+  kind: MowerKind;
   position: [number, number, number];
   direction: [number, number];
-  powered: boolean;
+  moving: boolean;
+  cutting: boolean;
 }) {
+  // Models face +Z; yaw from motion vector in XZ
   const yaw = Math.atan2(direction[0], direction[1]);
-  const scale = powered ? 1.15 : 0.85;
 
   return (
     <Suspense
-      fallback={
-        <mesh position={position} rotation={[0, yaw, 0]}>
-          <boxGeometry args={[powered ? 1.4 : 0.9, 0.45, powered ? 1.8 : 1.1]} />
-          <meshStandardMaterial color={powered ? "#3a6" : "#555"} />
-        </mesh>
-      }
+      fallback={<FallbackMower kind={kind} position={position} yaw={yaw} />}
     >
-      <MowerGlb position={position} yaw={yaw} scale={scale} />
-      {powered ? (
-        <mesh position={[position[0], 0.55, position[2]]}>
-          <sphereGeometry args={[0.12, 8, 8]} />
-          <meshStandardMaterial color="#f5d76e" emissive="#a80" />
-        </mesh>
-      ) : null}
+      <AnimatedMowerModel
+        kind={kind}
+        position={position}
+        yaw={yaw}
+        moving={moving}
+        cutting={cutting}
+      />
     </Suspense>
   );
 }
 
 useGLTF.preload(MODEL_CATALOG.mower.localPath);
+useGLTF.preload(MODEL_CATALOG.manual_reel_mower.localPath);
+
+export function mowerCatalogPath(toolId: string | null): string | null {
+  if (toolId === "manual-reel-mower") {
+    return MODEL_CATALOG.manual_reel_mower.localPath;
+  }
+  if (toolId === "lawn-mower") return MODEL_CATALOG.mower.localPath;
+  return null;
+}

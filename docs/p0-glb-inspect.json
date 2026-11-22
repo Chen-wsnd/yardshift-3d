@@ -1,0 +1,284 @@
+{
+  "reel": {
+    "file": "manual-reel-mower.glb",
+    "bytes": 36332,
+    "magic": "glTF",
+    "version": 2,
+    "length": 36332,
+    "sha256": "1a5aaa7d87a5ef444854126620c6cc005b1bab64fcd1513e5c54b9e6b16a0198",
+    "nodes": 16,
+    "meshes": 11,
+    "materials": [
+      "wood",
+      "dark",
+      "red",
+      "cream"
+    ],
+    "animations": [
+      {
+        "name": "blade-spin",
+        "channels": 1,
+        "samplers": 1
+      },
+      {
+        "name": "wheel-roll",
+        "channels": 3,
+        "samplers": 3
+      }
+    ],
+    "interestingNodes": [
+      {
+        "i": 0,
+        "name": "rusty-push-reel-mower"
+      },
+      {
+        "i": 1,
+        "name": "rusty-push-reel-mower_0",
+        "mesh": 0
+      },
+      {
+        "i": 2,
+        "name": "rusty-push-reel-mower_1",
+        "mesh": 1
+      },
+      {
+        "i": 3,
+        "name": "rusty-push-reel-mower_2",
+        "mesh": 2
+      },
+      {
+        "i": 4,
+        "name": "cutting-reel/dark",
+        "mesh": 3
+      },
+      {
+        "i": 5,
+        "name": "cutting-reel"
+      },
+      {
+        "i": 6,
+        "name": "cutting-reel/cream",
+        "mesh": 4
+      },
+      {
+        "i": 7,
+        "name": "wheel-side-right/dark",
+        "mesh": 5
+      },
+      {
+        "i": 8,
+        "name": "wheel-side-right"
+      },
+      {
+        "i": 9,
+        "name": "wheel-side-right/red",
+        "mesh": 6
+      },
+      {
+        "i": 10,
+        "name": "wheel-side-left/dark",
+        "mesh": 7
+      },
+      {
+        "i": 11,
+        "name": "wheel-side-left"
+      },
+      {
+        "i": 12,
+        "name": "wheel-side-left/red",
+        "mesh": 8
+      },
+      {
+        "i": 13,
+        "name": "wheel-roller/wood",
+        "mesh": 9
+      },
+      {
+        "i": 14,
+        "name": "wheel-roller"
+      },
+      {
+        "i": 15,
+        "name": "wheel-roller/dark",
+        "mesh": 10
+      }
+    ],
+    "allNodeNames": [
+      "rusty-push-reel-mower",
+      "rusty-push-reel-mower_0",
+      "rusty-push-reel-mower_1",
+      "rusty-push-reel-mower_2",
+      "cutting-reel/dark",
+      "cutting-reel",
+      "cutting-reel/cream",
+      "wheel-side-right/dark",
+      "wheel-side-right",
+      "wheel-side-right/red",
+      "wheel-side-left/dark",
+      "wheel-side-left",
+      "wheel-side-left/red",
+      "wheel-roller/wood",
+      "wheel-roller",
+      "wheel-roller/dark"
+    ]
+  },
+  "powered": {
+    "file": "mower.glb",
+    "bytes": 50184,
+    "magic": "glTF",
+    "version": 2,
+    "length": 50184,
+    "sha256": "39900e2df87a68c2646cbd64abf1f0a619bba54336d03955a43317d06857a5b7",
+    "nodes": 21,
+    "meshes": 15,
+    "materials": [
+      "blue",
+      "dark",
+      "cream",
+      "red",
+      "yellow",
+      "leaf"
+    ],
+    "animations": [
+      {
+        "name": "wheel-roll",
+        "channels": 4,
+        "samplers": 4
+      },
+      {
+        "name": "blade-spin",
+        "channels": 1,
+        "samplers": 1
+      }
+    ],
+    "interestingNodes": [
+      {
+        "i": 7,
+        "name": "wheel-front-right/dark",
+        "mesh": 6
+      },
+      {
+        "i": 8,
+        "name": "wheel-front-right"
+      },
+      {
+        "i": 9,
+        "name": "wheel-front-right/cream",
+        "mesh": 7
+      },
+      {
+        "i": 10,
+        "name": "wheel-front-left/dark",
+        "mesh": 8
+      },
+      {
+        "i": 11,
+        "name": "wheel-front-left"
+      },
+      {
+        "i": 12,
+        "name": "wheel-front-left/cream",
+        "mesh": 9
+      },
+      {
+        "i": 13,
+        "name": "wheel-rear-right/dark",
+        "mesh": 10
+      },
+      {
+        "i": 14,
+        "name": "wheel-rear-right"
+      },
+      {
+        "i": 15,
+        "name": "wheel-rear-right/cream",
+        "mesh": 11
+      },
+      {
+        "i": 16,
+        "name": "wheel-rear-left/dark",
+        "mesh": 12
+      },
+      {
+        "i": 17,
+        "name": "wheel-rear-left"
+      },
+      {
+        "i": 18,
+        "name": "wheel-rear-left/cream",
+        "mesh": 13
+      },
+      {
+        "i": 19,
+        "name": "blade"
+      }
+    ],
+    "allNodeNames": [
+      "self-propelled-mower-with-grass-bag",
+      "self-propelled-mower-with-grass-bag_0",
+      "self-propelled-mower-with-grass-bag_1",
+      "self-propelled-mower-with-grass-bag_2",
+      "self-propelled-mower-with-grass-bag_3",
+      "self-propelled-mower-with-grass-bag_4",
+      "self-propelled-mower-with-grass-bag_5",
+      "wheel-front-right/dark",
+      "wheel-front-right",
+      "wheel-front-right/cream",
+      "wheel-front-left/dark",
+      "wheel-front-left",
+      "wheel-front-left/cream",
+      "wheel-rear-right/dark",
+      "wheel-rear-right",
+      "wheel-rear-right/cream",
+      "wheel-rear-left/dark",
+      "wheel-rear-left",
+      "wheel-rear-left/cream",
+      "blade",
+      "(unnamed)"
+    ]
+  },
+  "lawnUncut": {
+    "file": "lawn-uncut.glb",
+    "bytes": 64700,
+    "magic": "glTF",
+    "version": 2,
+    "length": 64700,
+    "sha256": "22060d9494e59b44c0e91fcb2fbd462c03c0ba2f6c5ec1eb89a67ea13f4ea771",
+    "nodes": 4,
+    "meshes": 3,
+    "materials": [
+      "grass",
+      "leaf",
+      "yellow"
+    ],
+    "animations": [],
+    "interestingNodes": [],
+    "allNodeNames": [
+      "lawn-tile-2m-uncut",
+      "lawn-tile-2m-uncut_0",
+      "lawn-tile-2m-uncut_1",
+      "lawn-tile-2m-uncut_2"
+    ]
+  },
+  "lawnCut": {
+    "file": "lawn-cut.glb",
+    "bytes": 10920,
+    "magic": "glTF",
+    "version": 2,
+    "length": 10920,
+    "sha256": "d0ec6a1e90936ca6b21a5fe589dd47e11d1d5166617db196b05a1114f68bdfa4",
+    "nodes": 3,
+    "meshes": 2,
+    "materials": [
+      "grass",
+      "leaf"
+    ],
+    "animations": [],
+    "interestingNodes": [],
+    "allNodeNames": [
+      "lawn-tile-2m-cut",
+      "lawn-tile-2m-cut_0",
+      "lawn-tile-2m-cut_1"
+    ]
+  }
+}

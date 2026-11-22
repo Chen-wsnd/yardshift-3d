@@ -14,7 +14,7 @@ export function GardenCanvas({
   const cam = mode === "overview" ? OVERVIEW_CAMERA : LAWN_TASK_CAMERA;
 
   return (
-    <div className="h-full min-h-[480px] w-full bg-sky-200">
+    <div className="absolute inset-0 h-full w-full bg-sky-200">
       <Canvas
         shadows
         camera={{

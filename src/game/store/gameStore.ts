@@ -17,7 +17,10 @@ import {
 } from "@/game/rules/qualityRules";
 import { applyWorkAction } from "@/game/work/engine";
 import { createFreshV02Snapshot, makeJobState } from "@/game/work/fixtures";
-import { createFreshV03GardenSnapshot } from "@/game/work/gardenFixtures";
+import {
+  createFreshV03GardenSnapshot,
+  migrateLawnIfNeeded,
+} from "@/game/work/gardenFixtures";
 import { feesForJob } from "@/game/work/selectors";
 import type { WorkAction, WorkEvent, WorkSnapshot } from "@/game/work/types";
 
@@ -396,7 +399,17 @@ export const useGameStore = create<GameState>()(
       name: PERSIST_KEY,
       version: 3,
       partialize: (state) => ({ work: state.work }),
+      migrate: (persisted) => {
+        const p = persisted as { work?: import("@/game/work/types").WorkSnapshot };
+        if (p?.work) {
+          return { ...p, work: migrateLawnIfNeeded(p.work) };
+        }
+        return persisted as never;
+      },
       onRehydrateStorage: () => (state) => {
+        if (state?.work) {
+          state.work = migrateLawnIfNeeded(state.work);
+        }
         state?.setHydrated(true);
       },
     },

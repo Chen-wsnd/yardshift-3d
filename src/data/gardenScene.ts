@@ -43,21 +43,21 @@ export const GARDEN_HIDE_NAME_MATCHES = [
 export const LAWN_HOTSPOT = {
   zoneId: "j1-lawn",
   label: "Front lawn",
-  confirmPrompt: "Mow the front lawn?",
+  confirmPrompt: "Mow this lawn?",
   center: [0, 0.05, 0] as [number, number, number],
   size: [10, 0.05, 8] as [number, number, number],
 };
 
 /** Fixed three-quarter overview camera. */
 export const OVERVIEW_CAMERA = {
-  position: [14, 11, 16] as [number, number, number],
-  target: [0, 0.5, 0] as [number, number, number],
-  fov: 38,
+  position: [12, 9, 14] as [number, number, number],
+  target: [0, 0.4, 0] as [number, number, number],
+  fov: 42,
 };
 
 /** Close-up lawn task camera. */
 export const LAWN_TASK_CAMERA = {
-  position: [0, 12, 10] as [number, number, number],
+  position: [2, 9, 9] as [number, number, number],
   target: [0, 0, 0] as [number, number, number],
-  fov: 40,
+  fov: 42,
 };

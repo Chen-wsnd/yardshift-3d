@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { useGameStore } from "@/game/store/gameStore";
+import { LAWN_ZONE_ID } from "@/data/lawnGrid";
 import { WorkConfirm } from "./WorkConfirm";
 
 const GardenCanvas = dynamic(
@@ -35,55 +36,61 @@ export function GardenShell() {
     }
   }, [hydrated, work.schemaVersion, work.activeJobId, startV03Garden]);
 
-  const inTask = work.focusedZoneId === "j1-lawn";
+  const inTask = work.focusedZoneId === LAWN_ZONE_ID;
   const event = work.lastEvents[0];
   const job = work.jobs["job-overgrown-lawn"];
-  const lawn = job?.zones.find((z) => z.id === "j1-lawn");
+  const lawn = job?.zones.find((z) => z.id === LAWN_ZONE_ID);
   const finishedCells =
     lawn?.cells.filter(
-      (c) => c.remainingWork <= 0 || c.result === "finished" || c.result === "scalped",
+      (c) =>
+        c.remainingWork <= 0 ||
+        c.result === "finished" ||
+        c.result === "scalped",
     ).length ?? 0;
   const damagedCells =
     lawn?.cells.filter(
       (c) =>
-        c.result === "flower_damaged" || c.damageKinds.includes("flower_damaged"),
+        c.result === "flower_damaged" ||
+        c.damageKinds.includes("flower_damaged"),
     ).length ?? 0;
   const partialCells =
     lawn?.cells.filter(
-      (c) => c.result === "partial" || (c.remainingWork < 100 && c.remainingWork > 0),
+      (c) =>
+        c.result === "partial" ||
+        (c.remainingWork < 100 && c.remainingWork > 0),
     ).length ?? 0;
+  const battery = work.tools["lawn-mower"]?.resource ?? 0;
 
   return (
-    <AppShell>
-      <div className="relative flex min-h-[calc(100vh-57px)] flex-col">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 px-4 py-3 sm:px-6">
-          <div>
-            <h1 className="font-[family-name:var(--font-display)] text-xl text-stone-900">
-              {inTask ? "Front lawn · Mowing" : "Saturday morning garden"}
-            </h1>
-            <p className="text-sm text-stone-500">
-              {!hydrated
-                ? "Restoring save…"
-                : inTask
-                  ? "Drag to push the mower. Partial strips and flower damage persist."
-                  : "One garden overview — select the lawn to begin."}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+    <AppShell showBalance={false}>
+      <div className="relative flex h-[calc(100vh-57px)] min-h-[520px] flex-col">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 px-4 py-2 sm:px-6">
+          <div className="flex items-center gap-3">
             {inTask ? (
-              <Button
-                variant="secondary"
-                onClick={() => focusZone(null)}
-              >
+              <Button variant="secondary" onClick={() => focusZone(null)}>
                 Back to garden
               </Button>
             ) : null}
+            <div>
+              <h1 className="font-[family-name:var(--font-display)] text-lg text-stone-900 sm:text-xl">
+                {inTask ? "Front lawn" : "Saturday morning garden"}
+              </h1>
+              <p className="text-xs text-stone-500 sm:text-sm">
+                {!hydrated
+                  ? "Restoring save…"
+                  : inTask
+                    ? "Press-drag to mow. Still clicks do nothing."
+                    : "Click the lawn when it highlights."}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="ghost"
               onClick={() => {
                 if (
                   window.confirm(
-                    "Reset the garden lawn slice? (v0.2 saves stay untouched)",
+                    "Reset the garden lawn slice? (v0.1/v0.2 saves stay untouched)",
                   )
                 ) {
                   startV03Garden();
@@ -95,7 +102,7 @@ export function GardenShell() {
             </Button>
             <Link
               href="/legacy"
-              className="rounded-md px-3 py-2 text-sm text-stone-600 hover:bg-stone-100"
+              className="rounded-md px-3 py-2 text-sm text-stone-500 hover:bg-stone-100"
             >
               Legacy v0.2
             </Link>
@@ -103,22 +110,23 @@ export function GardenShell() {
         </div>
 
         <div className="relative min-h-0 flex-1">
-          <GardenCanvas
-            mode={inTask ? "lawn-task" : "overview"}
-            onSelectLawn={() => setConfirmOpen(true)}
-          />
+          <div className="absolute inset-0">
+            <GardenCanvas
+              mode={inTask ? "lawn-task" : "overview"}
+              onSelectLawn={() => setConfirmOpen(true)}
+            />
+          </div>
           <WorkConfirm
             open={confirmOpen && !inTask}
             onCancel={() => setConfirmOpen(false)}
             onConfirm={() => {
               setConfirmOpen(false);
-              focusZone("j1-lawn");
+              focusZone(LAWN_ZONE_ID);
             }}
           />
 
-          {/* Compact bottom tool rail — no economy HUD */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-3">
-            <div className="pointer-events-auto flex max-w-xl flex-wrap items-center justify-center gap-2 rounded-lg bg-[#f7f3ea]/95 px-3 py-2 text-sm shadow-md ring-1 ring-stone-900/10">
+            <div className="pointer-events-auto flex max-w-2xl flex-wrap items-center justify-center gap-2 rounded-lg bg-[#f7f3ea]/95 px-3 py-2 text-sm shadow-md ring-1 ring-stone-900/10">
               {inTask ? (
                 <>
                   <button
@@ -130,7 +138,7 @@ export function GardenShell() {
                     }`}
                     onClick={() => selectTool("manual-reel-mower")}
                   >
-                    Reel mower (narrow)
+                    Manual Reel Mower
                   </button>
                   <button
                     type="button"
@@ -141,12 +149,15 @@ export function GardenShell() {
                     }`}
                     onClick={() => selectTool("lawn-mower")}
                   >
-                    Powered mower (wide)
+                    Battery Self-Propelled
+                    {work.selectedToolId === "lawn-mower"
+                      ? ` · ${Math.round(battery)}%`
+                      : ""}
                   </button>
                 </>
               ) : (
                 <span className="text-stone-600">
-                  Cut {finishedCells} · Partial {partialCells} · Damaged flowers{" "}
+                  Cut {finishedCells} · Partial {partialCells} · Damaged{" "}
                   {damagedCells}
                 </span>
               )}
@@ -155,7 +166,7 @@ export function GardenShell() {
 
           {event ? (
             <div
-              className="pointer-events-none absolute left-3 top-3 z-10 max-w-sm rounded-md bg-emerald-50/95 px-3 py-2 text-sm text-emerald-950 ring-1 ring-emerald-200"
+              className="pointer-events-none absolute left-3 top-14 z-10 max-w-sm rounded-md bg-emerald-50/95 px-3 py-2 text-sm text-emerald-950 ring-1 ring-emerald-200"
               role="status"
             >
               {event.explanation}

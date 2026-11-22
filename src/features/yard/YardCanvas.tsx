@@ -9,11 +9,12 @@ import { YardScene } from "./YardScene";
  */
 export function YardCanvas() {
   return (
-    <div className="h-full min-h-[420px] w-full bg-sky-100">
+    <div className="h-full min-h-[420px] w-full bg-sky-200">
       <Canvas
         shadows
-        camera={{ position: [10, 8, 12], fov: 45, near: 0.1, far: 100 }}
-        gl={{ antialias: true }}
+        camera={{ position: [11, 9, 13], fov: 42, near: 0.1, far: 120 }}
+        gl={{ antialias: true, toneMappingExposure: 1.05 }}
+        dpr={[1, 1.75]}
       >
         <YardScene />
       </Canvas>

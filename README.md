@@ -2,7 +2,9 @@
 
 Browser-based 3D gardening simulation. Accept yard cleanup jobs, use real-world-inspired tools on interactive targets, earn credits, unlock a second job, and buy advanced equipment.
 
-**v0.1** — two playable jobs, eight tools, shop, rewards, persistence, and Reset Demo.
+**v0.1 gameplay** — two playable jobs, eight tools, shop, rewards, persistence, and Reset Demo.
+
+**Visual pass** (`feature/asset-visual-pass`) — CC0 grass PBR ground, upgraded lighting/fence/decor, clearer dirty→clean target visuals, invisible click proxies. See `docs/ASSET_MANIFEST.md`.
 
 ## Stack
 

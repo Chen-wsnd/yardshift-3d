@@ -1,32 +1,57 @@
-# YardShift v0.1 — Execution Log
+# YardShift — Execution Log
+
+## v0.1 gameplay (main)
 
 | Part | Status | Evidence | Problems / changes |
 |---|---|---|---|
-| Schema + jobs | done | `src/game/types`, `src/data/{tools,jobs,layouts,player}.ts` | Replaced Phase 0 2-tool sample with 8 tools + 2 layouts |
-| Game state + economy | done | `src/game/store/gameStore.ts`, `economyRules.ts` | Zustand persist `yardshift-v01`; loaners; idempotent claim |
-| Yard interactions | done | `YardObjects` click handlers + HUD | Procedural before/after; OrbitControls kept |
-| UI end-to-end | done | Task board, shop, completion modal, reset | PersistGate hydration race fixed with timeout fallback |
-| QA + Git | done | typecheck/lint/test/build pass; browser loop | Commit `b1ac82a` on `main` + `feature/full-mvp-v01` |
-| Deployment | blocked | `npx vercel whoami` → Logged out | Run `npx vercel login` then `npx vercel --prod` in repo |
+| Schema + jobs | done | `src/game/types`, `src/data/*` | 8 tools, 2 jobs |
+| Game state + economy | done | store + rules | persist `yardshift-v01` |
+| Yard interactions | done | click-to-clean | — |
+| UI end-to-end | done | board, shop, modal, reset | — |
+| QA + Git | done | 24 tests; `30a0eaa` on main | — |
+| Deployment | blocked | Vercel logged out | `npx vercel login` then `npx vercel --prod` |
 
-## Session notes
+## Visual / asset pass (`feature/asset-visual-pass`)
 
-- Branch: `feature/full-mvp-v01` from `main` @ `46de268`; fast-forward merged to `main`.
-- Copied product docs from `yardshift_full_build.zip` into `docs/`.
-- Decision: procedural meshes only (Asset Option A); asset folders stubbed.
-- Decision: Job 1 = 8 objectives / 500 cr; Job 2 = 7 objectives / 350 cr + demo loaners.
-- Browser: Accept Job UI verified; yard canvas + tools + objectives HUD verified; full two-job clear/claim/unlock driven in-page via `window.__yardshift` (Job1 8/8 → 540 cr; Job2 7/7 + loaners → 890 cr). Manual mesh raycast click-picking not exhaustively coordinate-tested in automation.
-- Vercel CLI available via `npx` but **not authenticated** — no public URL invented.
+| Part | Status | Evidence | Notes |
+|---|---|---|---|
+| Asset registry | done | `src/features/yard/assets/` | Role → path + procedural fallback |
+| Ground PBR | done | ambientCG Grass 001 CC0 in `public/assets/textures/grass/` | Auto procedural fallback |
+| Lighting / sky / fence / planters | done | `YardScene`, `Fence`, `BaseDecor` | Semi-realistic daytime |
+| TargetKind dirty→clean visuals | done | `visuals/TargetVisuals.tsx` | Procedural (no paid GLB) |
+| Click proxies + drag guard | done | `interaction/ClickProxy.tsx` | opacity-0 hitboxes (not `visible=false`) |
+| Manifest | done | `docs/ASSET_MANIFEST.md` | Licenses recorded |
 
-## Commands
+### Deferred (non-blocking) — do not re-investigate this pass
+
+- Poly Haven Weed Plant 02 GLB: download URL 404; keep procedural weeds.
+- Fab / paid vegetation & patio packs: not purchased; out of scope.
+- ambientCG AO map stored but not wired (needs uv2).
+- Hover ring / highlight polish and short fade animations.
+- Occasional click vs orbit friction on small targets (proxies mitigate; precision polish later).
+- Mixing photoreal grass texture with procedural props — acceptable for hackathon; unify later if GLBs land.
+- PersistGate brief loading flash on cold start.
+
+### Blockers
+
+- **Vercel deploy:** CLI unauthenticated — human must `npx vercel login`.
+- No core gameplay blockers known after proxy raycast fix.
+
+## Commands (visual pass)
 
 - `npm run typecheck` — pass
 - `npm run lint` — pass
 - `npm run test` — 24 pass
 - `npm run build` — pass
 
-## Git
+Product-owner playtest owns subjective UX (camera, click feel, visuals). Engineering will refine after feedback.
 
-- Feature: https://github.com/Chen-wsnd/yardshift-3d/tree/feature/full-mvp-v01
-- Main SHA: `b1ac82a2c86b911d9901776954241dd4ec10b7bd`
-- Message: `feat: ship YardShift v0.1 playable two-job MVP`
+## Handoff
+
+```bash
+npm install
+npm run dev
+# open http://localhost:3000
+```
+
+Branch: `feature/asset-visual-pass` (not merged to main until owner accepts).

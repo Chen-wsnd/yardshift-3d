@@ -1,0 +1,151 @@
+import type { YardAssetEntry, VisualRole } from "./types";
+
+/**
+ * Maps visual roles → optional imported assets + always-available procedural fallback.
+ * Game store / rules never import this module.
+ */
+export const YARD_ASSET_REGISTRY: Record<VisualRole, YardAssetEntry> = {
+  ground_grass: {
+    role: "ground_grass",
+    kind: "texture",
+    path: "/assets/textures/grass/color.jpg",
+    fallback: "procedural",
+    sourceName: "ambientCG Grass 001",
+    sourceUrl: "https://ambientcg.com/view?id=Grass001",
+    license: "CC0 1.0",
+    notes: "1K JPG color/normal/roughness/ao committed under public/assets/textures/grass/",
+  },
+  long_lawn_dirty: {
+    role: "long_lawn_dirty",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift procedural grass tufts",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  long_lawn_clean: {
+    role: "long_lawn_clean",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift procedural neat lawn",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  lawn_edge_dirty: {
+    role: "lawn_edge_dirty",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift procedural ragged edge",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  lawn_edge_clean: {
+    role: "lawn_edge_clean",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift procedural crisp edge",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  weeds_dirty: {
+    role: "weeds_dirty",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift procedural weed cluster",
+    sourceUrl: "in-repo",
+    license: "Project code",
+    notes: "Poly Haven Weed Plant 02 download URL 404 at build time; procedural used",
+  },
+  weeds_clean: {
+    role: "weeds_clean",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift short patch",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  tall_edge_grass_dirty: {
+    role: "tall_edge_grass_dirty",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift tall grass tuft",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  tall_edge_grass_clean: {
+    role: "tall_edge_grass_clean",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift short edge grass",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  leaves_dirty: {
+    role: "leaves_dirty",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift leaf heap",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  hedge_dirty: {
+    role: "hedge_dirty",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift rough hedge",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  hedge_clean: {
+    role: "hedge_clean",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift shaped hedge",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  fallen_branch_dirty: {
+    role: "fallen_branch_dirty",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift forked branch",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  decor_tree: {
+    role: "decor_tree",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift maple tree",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  decor_bush: {
+    role: "decor_bush",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift decor bush",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  decor_path: {
+    role: "decor_path",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift stone path",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+  decor_planter: {
+    role: "decor_planter",
+    kind: "procedural",
+    fallback: "procedural",
+    sourceName: "YardShift planter",
+    sourceUrl: "in-repo",
+    license: "Project code",
+  },
+};
+
+export function getAsset(role: VisualRole): YardAssetEntry {
+  return YARD_ASSET_REGISTRY[role];
+}

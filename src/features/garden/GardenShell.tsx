@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
-import { useGameStore } from "@/game/store/gameStore";
+import { getGardenTask, GARDEN_TASKS } from "@/data/gardenTasks";
 import { LAWN_ZONE_ID } from "@/data/lawnGrid";
+import { useGameStore } from "@/game/store/gameStore";
 import { WorkConfirm } from "./WorkConfirm";
+import { WorkPlanPanel } from "./WorkPlanPanel";
+import { WorkReviewPanel } from "./WorkReviewPanel";
 
 const GardenCanvas = dynamic(
   () => import("./GardenCanvas").then((m) => m.GardenCanvas),
@@ -25,9 +28,15 @@ export function GardenShell() {
   const work = useGameStore((s) => s.work);
   const hydrated = useGameStore((s) => s.hydrated);
   const startV03Garden = useGameStore((s) => s.startV03Garden);
-  const focusZone = useGameStore((s) => s.focusZone);
+  const setActiveGardenTask = useGameStore((s) => s.setActiveGardenTask);
   const selectTool = useGameStore((s) => s.selectTool);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const rechargeTool = useGameStore((s) => s.rechargeTool);
+  const clearJam = useGameStore((s) => s.clearJam);
+  const setReviewOpen = useGameStore((s) => s.setReviewOpen);
+  const inspectObject = useGameStore((s) => s.inspectObject);
+
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+  const [planOpen, setPlanOpen] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -36,10 +45,15 @@ export function GardenShell() {
     }
   }, [hydrated, work.schemaVersion, work.activeJobId, startV03Garden]);
 
-  const inTask = work.focusedZoneId === LAWN_ZONE_ID;
+  const garden = work.garden;
+  const activeTaskId = garden?.activeTaskId ?? null;
+  const pendingTask = pendingTaskId ? getGardenTask(pendingTaskId) : null;
+  const activeTask = activeTaskId ? getGardenTask(activeTaskId) : null;
   const event = work.lastEvents[0];
-  const job = work.jobs["job-overgrown-lawn"];
-  const lawn = job?.zones.find((z) => z.id === LAWN_ZONE_ID);
+
+  const lawn = work.jobs["job-overgrown-lawn"]?.zones.find(
+    (z) => z.id === LAWN_ZONE_ID,
+  );
   const finishedCells =
     lawn?.cells.filter(
       (c) =>
@@ -47,54 +61,82 @@ export function GardenShell() {
         c.result === "finished" ||
         c.result === "scalped",
     ).length ?? 0;
-  const damagedCells =
-    lawn?.cells.filter(
-      (c) =>
-        c.result === "flower_damaged" ||
-        c.damageKinds.includes("flower_damaged"),
+  const looseDebris =
+    Object.values(garden?.debris ?? {}).filter(
+      (d) => d.state === "scattered" || d.state === "gathered",
     ).length ?? 0;
-  const partialCells =
-    lawn?.cells.filter(
-      (c) =>
-        c.result === "partial" ||
-        (c.remainingWork < 100 && c.remainingWork > 0),
-    ).length ?? 0;
-  const battery = work.tools["lawn-mower"]?.resource ?? 0;
+  const uncutHedge =
+    Object.values(garden?.hedgeClusters ?? {}).filter((c) => !c.cut).length ??
+    0;
+
+  const selected = work.selectedToolId
+    ? work.tools[work.selectedToolId]
+    : undefined;
+  const needsRecharge =
+    selected &&
+    (selected.resourceType === "battery" || selected.resourceType === "fuel") &&
+    (selected.resource < 15 || selected.status === "unpowered");
+  const needsJamClear = selected?.status === "jammed";
+
+  const toolChoices = activeTask?.tools ?? [];
 
   return (
     <AppShell showBalance={false}>
       <div className="relative flex h-[calc(100vh-57px)] min-h-[520px] flex-col">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 px-4 py-2 sm:px-6">
           <div className="flex items-center gap-3">
-            {inTask ? (
-              <Button variant="secondary" onClick={() => focusZone(null)}>
+            {activeTaskId ? (
+              <Button
+                variant="secondary"
+                onClick={() => setActiveGardenTask(null)}
+              >
                 Back to garden
               </Button>
             ) : null}
             <div>
               <h1 className="font-[family-name:var(--font-display)] text-lg text-stone-900 sm:text-xl">
-                {inTask ? "Front lawn" : "Saturday morning garden"}
+                {activeTask?.name ?? "Saturday morning garden"}
               </h1>
               <p className="text-xs text-stone-500 sm:text-sm">
                 {!hydrated
                   ? "Restoring save…"
-                  : inTask
-                    ? "Press-drag to mow. Still clicks do nothing."
-                    : "Click the lawn when it highlights."}
+                  : activeTask
+                    ? activeTask.prompt.replace(/\?$/, ".")
+                    : "Take a look around. What would you do first?"}
               </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {!activeTaskId ? (
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    inspectObject("garden-overview");
+                    setPlanOpen(false);
+                  }}
+                >
+                  Inspect
+                </Button>
+                <Button variant="ghost" onClick={() => setPlanOpen((v) => !v)}>
+                  Work plan
+                </Button>
+                <Button variant="secondary" onClick={() => setReviewOpen(true)}>
+                  Work review
+                </Button>
+              </>
+            ) : null}
             <Button
               variant="ghost"
               onClick={() => {
                 if (
                   window.confirm(
-                    "Reset the garden lawn slice? (v0.1/v0.2 saves stay untouched)",
+                    "Reset the garden? (v0.1/v0.2 saves stay untouched)",
                   )
                 ) {
                   startV03Garden();
-                  setConfirmOpen(false);
+                  setPendingTaskId(null);
+                  setPlanOpen(false);
                 }
               }}
             >
@@ -112,53 +154,92 @@ export function GardenShell() {
         <div className="relative min-h-0 flex-1">
           <div className="absolute inset-0">
             <GardenCanvas
-              mode={inTask ? "lawn-task" : "overview"}
-              onSelectLawn={() => setConfirmOpen(true)}
+              activeTaskId={activeTaskId}
+              onSelectTask={(id) => setPendingTaskId(id)}
             />
           </div>
+
           <WorkConfirm
-            open={confirmOpen && !inTask}
-            onCancel={() => setConfirmOpen(false)}
+            open={Boolean(pendingTask) && !activeTaskId}
+            title={pendingTask?.prompt ?? "Start work?"}
+            body={
+              pendingTask
+                ? `Tools: ${pendingTask.tools.join(", ") || "hands / inspect"}`
+                : undefined
+            }
+            onCancel={() => setPendingTaskId(null)}
             onConfirm={() => {
-              setConfirmOpen(false);
-              focusZone(LAWN_ZONE_ID);
+              if (!pendingTaskId) return;
+              const task = getGardenTask(pendingTaskId);
+              setActiveGardenTask(pendingTaskId);
+              if (task?.tools[0]) selectTool(task.tools[0]);
+              setPendingTaskId(null);
             }}
           />
 
+          <WorkPlanPanel open={planOpen} onClose={() => setPlanOpen(false)} />
+          <WorkReviewPanel />
+
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-3">
-            <div className="pointer-events-auto flex max-w-2xl flex-wrap items-center justify-center gap-2 rounded-lg bg-[#f7f3ea]/95 px-3 py-2 text-sm shadow-md ring-1 ring-stone-900/10">
-              {inTask ? (
+            <div className="pointer-events-auto flex max-w-3xl flex-wrap items-center justify-center gap-2 rounded-lg bg-[#f7f3ea]/95 px-3 py-2 text-sm shadow-md ring-1 ring-stone-900/10">
+              {activeTaskId && toolChoices.length ? (
                 <>
-                  <button
-                    type="button"
-                    className={`rounded-md px-3 py-1.5 ${
-                      work.selectedToolId === "manual-reel-mower"
-                        ? "bg-emerald-800 text-white"
-                        : "bg-white text-stone-800"
-                    }`}
-                    onClick={() => selectTool("manual-reel-mower")}
-                  >
-                    Manual Reel Mower
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded-md px-3 py-1.5 ${
-                      work.selectedToolId === "lawn-mower"
-                        ? "bg-emerald-800 text-white"
-                        : "bg-white text-stone-800"
-                    }`}
-                    onClick={() => selectTool("lawn-mower")}
-                  >
-                    Battery Self-Propelled
-                    {work.selectedToolId === "lawn-mower"
-                      ? ` · ${Math.round(battery)}%`
-                      : ""}
-                  </button>
+                  {toolChoices.map((toolId) => {
+                    const t = work.tools[toolId];
+                    const label =
+                      GARDEN_TASKS.find((x) => x.id === activeTaskId)
+                        ?.tools.includes(toolId)
+                        ? toolId
+                            .split("-")
+                            .map((w) => w[0]?.toUpperCase() + w.slice(1))
+                            .join(" ")
+                        : toolId;
+                    const bat =
+                      t &&
+                      (t.resourceType === "battery" ||
+                        t.resourceType === "fuel")
+                        ? ` · ${Math.round(t.resource)}%`
+                        : "";
+                    return (
+                      <button
+                        key={toolId}
+                        type="button"
+                        className={`rounded-md px-3 py-1.5 ${
+                          work.selectedToolId === toolId
+                            ? "bg-emerald-800 text-white"
+                            : "bg-white text-stone-800"
+                        }`}
+                        onClick={() => selectTool(toolId)}
+                      >
+                        {label}
+                        {work.selectedToolId === toolId ? bat : ""}
+                      </button>
+                    );
+                  })}
+                  {needsRecharge ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        if (!work.selectedToolId) return;
+                        rechargeTool(work.selectedToolId);
+                      }}
+                    >
+                      Recharge
+                    </Button>
+                  ) : null}
+                  {needsJamClear && work.selectedToolId ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => clearJam(work.selectedToolId!)}
+                    >
+                      Clear jam
+                    </Button>
+                  ) : null}
                 </>
               ) : (
                 <span className="text-stone-600">
-                  Cut {finishedCells} · Partial {partialCells} · Damaged{" "}
-                  {damagedCells}
+                  Lawn cut {finishedCells} · Hedge left {uncutHedge} · Debris{" "}
+                  {looseDebris}
                 </span>
               )}
             </div>

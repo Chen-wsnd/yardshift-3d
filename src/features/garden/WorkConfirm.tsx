@@ -1,14 +1,17 @@
 "use client";
 
-import { LAWN_HOTSPOT } from "@/data/gardenScene";
 import { Button } from "@/components/ui/Button";
 
 export function WorkConfirm({
   open,
+  title,
+  body,
   onConfirm,
   onCancel,
 }: {
   open: boolean;
+  title: string;
+  body?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -26,17 +29,16 @@ export function WorkConfirm({
           id="work-confirm-title"
           className="font-[family-name:var(--font-display)] text-xl text-stone-900"
         >
-          {LAWN_HOTSPOT.confirmPrompt}
+          {title}
         </h2>
-        <p className="mt-2 text-sm text-stone-600">
-          Push a reel or powered mower across the grass. Partial passes stay.
-          Wide careless strokes can clip the flower border.
-        </p>
+        {body ? (
+          <p className="mt-2 text-sm text-stone-600">{body}</p>
+        ) : null}
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={onCancel}>
             Not now
           </Button>
-          <Button onClick={onConfirm}>Start mowing</Button>
+          <Button onClick={onConfirm}>Start</Button>
         </div>
       </div>
     </div>

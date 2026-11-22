@@ -140,6 +140,28 @@ export function applyLawnSweep(
 
   const isReel = action.toolId === "manual-reel-mower";
   const isPowered = action.toolId === "lawn-mower";
+
+  // Safety: uncleared lawn hazard blocks mowing in its radius
+  if (snap.garden) {
+    const blocking = Object.values(snap.garden.hazards).find(
+      (h) =>
+        !h.cleared &&
+        h.blocks.includes(action.toolId) &&
+        samples.some(
+          (s) => (s.x - h.x) ** 2 + (s.z - h.z) ** 2 <= 1.1 * 1.1,
+        ),
+    );
+    if (blocking) {
+      pushEvent(events, {
+        kind: "ineffective",
+        zoneId: zone.id,
+        toolId: action.toolId,
+        explanation: `${blocking.label} — clear it before mowing this patch.`,
+      });
+      return { nextState: { ...snap, lastEvents: events }, events };
+    }
+  }
+
   // Half-width of cut + small slop so footprint reaches adjacent fine cells
   const cutRadius =
     (isReel ? LAWN_FINE.reelCutWidth : LAWN_FINE.poweredCutWidth) * 0.5 + 0.08;
@@ -231,10 +253,16 @@ export function applyLawnSweep(
     tool = markUnpoweredIfEmpty(tool);
   }
   if (anyProgress || metres > 0.05) {
-    tool = applyWear(tool, {
-      ...profile,
-      wearPerStroke: profile.wearPerStroke * Math.min(1.5, metres),
-    });
+    // Condition wear only — battery already drained by path metres above.
+    tool = applyWear(
+      tool,
+      {
+        ...profile,
+        wearPerStroke: profile.wearPerStroke * Math.min(1.5, metres),
+      },
+      false,
+      { drainResource: false },
+    );
   }
 
   if (!anyProgress && events.length === 0) {

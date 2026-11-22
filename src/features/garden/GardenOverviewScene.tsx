@@ -2,20 +2,27 @@
 
 import { Suspense, useState } from "react";
 import { OrbitControls } from "@react-three/drei";
-import { SaturdayGardenModel } from "./SaturdayGardenModel";
-import { LawnOverviewOverlay } from "./LawnOverviewOverlay";
-import { LawnHotspot } from "./LawnHotspot";
-import { LawnTaskStage } from "./LawnTaskStage";
+import { getGardenTask } from "@/data/gardenTasks";
 import { OVERVIEW_CAMERA } from "@/data/gardenScene";
+import { SaturdayGardenModel } from "./SaturdayGardenModel";
+import { GardenHotspots } from "./GardenHotspots";
+import { GardenWorldOverlays } from "./GardenWorldOverlays";
+import { LawnTaskStage } from "./LawnTaskStage";
+import { HedgeTaskStage } from "./HedgeTaskStage";
+import { DebrisTaskStage } from "./DebrisTaskStage";
+import { FlowerbedTaskStage } from "./FlowerbedTaskStage";
+import { HazardTaskStage } from "./HazardTaskStage";
+import { EdgeTaskStage } from "./EdgeTaskStage";
 
 export function GardenOverviewScene({
-  mode,
-  onSelectLawn,
+  activeTaskId,
+  onSelectTask,
 }: {
-  mode: "overview" | "lawn-task";
-  onSelectLawn: () => void;
+  activeTaskId: string | null;
+  onSelectTask: (taskId: string) => void;
 }) {
   const [dragging, setDragging] = useState(false);
+  const task = activeTaskId ? getGardenTask(activeTaskId) : null;
 
   return (
     <>
@@ -29,13 +36,13 @@ export function GardenOverviewScene({
       />
       <hemisphereLight args={["#dff0ff", "#6a7a4a", 0.45]} />
 
-      {mode === "overview" ? (
+      {!activeTaskId ? (
         <>
           <Suspense fallback={null}>
             <SaturdayGardenModel />
-            <LawnOverviewOverlay />
+            <GardenWorldOverlays />
           </Suspense>
-          <LawnHotspot onSelect={onSelectLawn} />
+          <GardenHotspots onSelect={onSelectTask} />
           <OrbitControls
             makeDefault
             target={OVERVIEW_CAMERA.target}
@@ -47,13 +54,26 @@ export function GardenOverviewScene({
         </>
       ) : (
         <>
-          <LawnTaskStage onDragChange={setDragging} />
+          {activeTaskId === "lawn" ? (
+            <LawnTaskStage onDragChange={setDragging} />
+          ) : null}
+          {activeTaskId === "hedge" ? (
+            <HedgeTaskStage onDragChange={setDragging} />
+          ) : null}
+          {activeTaskId === "debris" ? (
+            <DebrisTaskStage onDragChange={setDragging} />
+          ) : null}
+          {activeTaskId === "flowerbed" ? <FlowerbedTaskStage /> : null}
+          {activeTaskId === "hazard" ? <HazardTaskStage /> : null}
+          {activeTaskId === "edge" ? (
+            <EdgeTaskStage onDragChange={setDragging} />
+          ) : null}
           <OrbitControls
             makeDefault
-            target={[0, 0, 0]}
+            target={task?.camera.target ?? [0, 0, 0]}
             maxPolarAngle={Math.PI / 2.35}
-            minDistance={7}
-            maxDistance={16}
+            minDistance={5}
+            maxDistance={18}
             enablePan={false}
             enabled={!dragging}
           />

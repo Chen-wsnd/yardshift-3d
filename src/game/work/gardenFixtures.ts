@@ -6,6 +6,7 @@ import {
   isFlowerBorderCol,
   lawnCellCenter,
 } from "@/data/lawnGrid";
+import { createFreshGardenDomain } from "@/game/garden/fixtures";
 import { makeToolInstance } from "./fixtures";
 import type { ToolInstance, WorkCell, WorkSnapshot, WorkZone } from "./types";
 
@@ -68,7 +69,13 @@ export function createFreshV03GardenSnapshot(): WorkSnapshot {
   return {
     schemaVersion: 3,
     balance: 0,
-    ownedToolIds: [...STARTER_TOOL_IDS, "lawn-mower"],
+    ownedToolIds: [
+      ...STARTER_TOOL_IDS,
+      "lawn-mower",
+      "hedge-trimmer",
+      "leaf-blower",
+      "string-trimmer",
+    ],
     rentedToolIds: [],
     tools,
     jobs: {
@@ -107,10 +114,11 @@ export function createFreshV03GardenSnapshot(): WorkSnapshot {
         zoneId: "",
         toolId: "",
         explanation:
-          "Drag a reel or powered mower across the lawn. Still clicks do nothing.",
+          "Take a look around. What would you do first?",
       },
     ],
     demoStarted: true,
+    garden: createFreshGardenDomain(),
   };
 }
 

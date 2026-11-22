@@ -1,32 +1,41 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import { getGardenTask } from "@/data/gardenTasks";
+import { OVERVIEW_CAMERA } from "@/data/gardenScene";
 import { GardenOverviewScene } from "./GardenOverviewScene";
-import { LAWN_TASK_CAMERA, OVERVIEW_CAMERA } from "@/data/gardenScene";
 
 export function GardenCanvas({
-  mode,
-  onSelectLawn,
+  activeTaskId,
+  onSelectTask,
 }: {
-  mode: "overview" | "lawn-task";
-  onSelectLawn: () => void;
+  activeTaskId: string | null;
+  onSelectTask: (taskId: string) => void;
 }) {
-  const cam = mode === "overview" ? OVERVIEW_CAMERA : LAWN_TASK_CAMERA;
+  const task = activeTaskId ? getGardenTask(activeTaskId) : null;
+  const cam = task?.camera ?? {
+    position: OVERVIEW_CAMERA.position,
+    target: OVERVIEW_CAMERA.target,
+  };
 
   return (
     <div className="absolute inset-0 h-full w-full bg-sky-200">
       <Canvas
+        key={activeTaskId ?? "overview"}
         shadows
         camera={{
           position: cam.position,
-          fov: cam.fov,
+          fov: activeTaskId ? 42 : OVERVIEW_CAMERA.fov,
           near: 0.1,
           far: 120,
         }}
         gl={{ antialias: true, toneMappingExposure: 1.05 }}
         dpr={[1, 1.75]}
       >
-        <GardenOverviewScene mode={mode} onSelectLawn={onSelectLawn} />
+        <GardenOverviewScene
+          activeTaskId={activeTaskId}
+          onSelectTask={onSelectTask}
+        />
       </Canvas>
     </div>
   );

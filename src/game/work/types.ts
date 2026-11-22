@@ -173,7 +173,7 @@ export interface WorkJobState {
 }
 
 export interface WorkSnapshot {
-  /** 2 = legacy multi-job board; 3 = garden overview lawn slice */
+  /** 2 = legacy multi-job board; 3 = garden overview lawn slice (+ optional garden domain) */
   schemaVersion: 2 | 3;
   balance: number;
   ownedToolIds: string[];
@@ -187,4 +187,6 @@ export interface WorkSnapshot {
   damageKeys: string[];
   lastEvents: WorkEvent[];
   demoStarted: boolean;
+  /** v0.6 cross-task world — absent on pure legacy v02 snapshots */
+  garden?: import("@/game/garden/types").GardenDomain;
 }

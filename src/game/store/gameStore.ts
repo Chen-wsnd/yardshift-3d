@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import { EQUIPMENT_PROFILES, JOB_BASE_PAYOUT } from "@/data/equipmentProfiles";
 import {
   applyClearJam,
+  applyRecharge,
   applyRefill,
   applyRepair,
   repairCost,
@@ -15,6 +16,12 @@ import {
   computeNetPayout,
   updateJobMetrics,
 } from "@/game/rules/qualityRules";
+import { createFreshGardenDomain } from "@/game/garden/fixtures";
+import {
+  applyGardenEvent,
+  gatherNearbyDebris,
+} from "@/game/garden/reducer";
+import type { GardenEvent } from "@/game/garden/types";
 import { applyWorkAction } from "@/game/work/engine";
 import { createFreshV02Snapshot, makeJobState } from "@/game/work/fixtures";
 import {
@@ -27,6 +34,11 @@ import type { WorkAction, WorkEvent, WorkSnapshot } from "@/game/work/types";
 /** New garden path. Leaves legacy `yardshift-v02` saves untouched. */
 const PERSIST_KEY = "yardshift-v03";
 
+function withGarden(work: WorkSnapshot): WorkSnapshot {
+  if (work.garden) return work;
+  return { ...work, garden: createFreshGardenDomain() };
+}
+
 interface GameState {
   work: WorkSnapshot;
   hydrated: boolean;
@@ -36,16 +48,31 @@ interface GameState {
   resetDemo: () => void;
   acceptJob: (jobId: string) => boolean;
   focusZone: (zoneId: string | null) => void;
+  setActiveGardenTask: (taskId: string | null) => void;
   selectTool: (toolId: string | null) => void;
   performWorkAction: (action: Omit<WorkAction, "jobId"> & { jobId?: string }) => WorkEvent[];
   rentTool: (toolId: string) => { ok: boolean; reason?: string };
   purchaseTool: (toolId: string) => { ok: boolean; reason?: string };
   repairTool: (toolId: string) => { ok: boolean; reason?: string };
   refillTool: (toolId: string) => { ok: boolean; reason?: string };
+  /** Garden-mode free recharge (setup/recovery effort, no credits). */
+  rechargeTool: (toolId: string) => { ok: boolean; reason?: string };
   clearJam: (toolId: string) => void;
   finishJob: (early: boolean) => { ok: boolean; reason?: string; net?: number };
   claimReward: (jobId: string) => boolean;
   isJobUnlocked: (jobId: string) => boolean;
+  dispatchGarden: (event: GardenEvent) => void;
+  inspectObject: (objectId: string) => void;
+  removeHazard: (hazardId: string) => void;
+  cutHedgeCluster: (clusterId: string, toolId: string, overcut?: boolean) => void;
+  pullWeed: (plantId: string) => void;
+  topCutWeed: (plantId: string) => void;
+  damageFlower: (plantId: string) => void;
+  rakeDebris: (x: number, z: number, dx: number, dz: number) => void;
+  blowDebris: (x: number, z: number, dirX: number, dirZ: number) => void;
+  bagNearbyPiles: (x: number, z: number) => void;
+  revisePlan: (orderedTaskIds: string[]) => void;
+  setReviewOpen: (open: boolean) => void;
 }
 
 export const useGameStore = create<GameState>()(
@@ -106,8 +133,37 @@ export const useGameStore = create<GameState>()(
         set({ work: { ...get().work, focusedZoneId: zoneId } });
       },
 
+      setActiveGardenTask: (taskId) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        set({
+          work: {
+            ...work,
+            focusedZoneId:
+              taskId === "lawn"
+                ? "j1-lawn"
+                : taskId
+                  ? `garden-${taskId}`
+                  : null,
+            garden: { ...work.garden, activeTaskId: taskId },
+          },
+        });
+      },
+
       selectTool: (toolId) => {
-        set({ work: { ...get().work, selectedToolId: toolId } });
+        const work = withGarden(get().work);
+        const prev = work.selectedToolId;
+        let garden = work.garden;
+        if (garden && toolId && toolId !== prev) {
+          garden = applyGardenEvent(garden, {
+            id: `tool-select:${toolId}:${garden.events.length}`,
+            type: "TOOL_SELECTED",
+            toolId,
+            previousToolId: prev ?? undefined,
+            effort: 0.4,
+          });
+        }
+        set({ work: { ...work, selectedToolId: toolId, garden } });
       },
 
       performWorkAction: (partial) => {
@@ -322,6 +378,434 @@ export const useGameStore = create<GameState>()(
         });
       },
 
+      rechargeTool: (toolId) => {
+        const work = withGarden(get().work);
+        const tool = work.tools[toolId];
+        if (!tool) return { ok: false, reason: "Unknown tool." };
+        const result = applyRecharge(tool);
+        if (!result.ok) return { ok: false, reason: result.reason };
+        let garden = work.garden;
+        if (garden) {
+          garden = applyGardenEvent(garden, {
+            id: `recharge:${toolId}:${garden.events.length}`,
+            type: "TOOL_RECHARGED",
+            toolId,
+            effort: 1.5,
+          });
+        }
+        set({
+          work: {
+            ...work,
+            tools: { ...work.tools, [toolId]: result.tool },
+            garden,
+            lastEvents: [
+              {
+                id: "recharge",
+                kind: "refilled",
+                zoneId: "",
+                toolId,
+                explanation:
+                  "Battery recharged (prep time). Ready to continue where you left off.",
+              },
+            ],
+          },
+        });
+        return { ok: true };
+      },
+
+      dispatchGarden: (event) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        set({
+          work: {
+            ...work,
+            garden: applyGardenEvent(work.garden, event),
+          },
+        });
+      },
+
+      inspectObject: (objectId) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        let garden = applyGardenEvent(work.garden, {
+          id: `inspect:${objectId}`,
+          type: "INSPECTED",
+          objectId,
+          effort: 0.3,
+        });
+        // Walking the yard reveals quieter spots (edge + hazard hotspots).
+        if (objectId === "garden-overview") {
+          for (const id of ["hazard", "edge", ...Object.keys(garden.hazards)]) {
+            garden = applyGardenEvent(garden, {
+              id: `inspect:${id}`,
+              type: "INSPECTED",
+              objectId: id,
+              effort: 0.15,
+            });
+          }
+        }
+        set({
+          work: {
+            ...work,
+            garden,
+            lastEvents: [
+              {
+                id: "inspect",
+                kind: "progress",
+                zoneId: "",
+                toolId: "",
+                explanation:
+                  objectId === "garden-overview"
+                    ? "You spotted a stone in the NW lawn and a quieter path edge. Hazards and edges are clearer now."
+                    : `Inspected ${objectId}.`,
+              },
+            ],
+          },
+        });
+      },
+
+      removeHazard: (hazardId) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        const h = work.garden.hazards[hazardId];
+        if (!h || h.cleared) return;
+        set({
+          work: {
+            ...work,
+            garden: applyGardenEvent(work.garden, {
+              id: `hazard-clear:${hazardId}`,
+              type: "HAZARD_REMOVED",
+              hazardId,
+              effort: 1.0,
+            }),
+            lastEvents: [
+              {
+                id: "hazard",
+                kind: "progress",
+                zoneId: "",
+                toolId: "",
+                explanation: `Removed: ${h.label}. That area is safer to work.`,
+              },
+            ],
+          },
+        });
+      },
+
+      cutHedgeCluster: (clusterId, toolId, overcut) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        const powered = toolId === "hedge-trimmer";
+        // Block powered trimmer near uncleared hardwood hazard
+        const blocked = Object.values(work.garden.hazards).some(
+          (h) =>
+            !h.cleared &&
+            h.blocks.includes(toolId) &&
+            Math.hypot(
+              h.x - (work.garden!.hedgeClusters[clusterId]?.x ?? 99),
+              h.z - (work.garden!.hedgeClusters[clusterId]?.z ?? 99),
+            ) < 1.2,
+        );
+        if (blocked) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "blocked",
+                  kind: "ineffective",
+                  zoneId: "hedge",
+                  toolId,
+                  explanation:
+                    "Hard entangled wood blocks the powered trimmer here — inspect and clear it first.",
+                },
+              ],
+            },
+          });
+          return;
+        }
+        set({
+          work: {
+            ...work,
+            garden: applyGardenEvent(work.garden, {
+              id: `hedge-cut:${clusterId}:${toolId}`,
+              type: "HEDGE_CLUSTER_CUT",
+              clusterId,
+              overcut: Boolean(overcut),
+              effort: powered ? 0.35 : 0.55,
+            }),
+            lastEvents: [
+              {
+                id: "hedge",
+                kind: "progress",
+                zoneId: "hedge",
+                toolId,
+                explanation: overcut
+                  ? "Overcut left a notch in the hedge. Clippings fell below."
+                  : "Hedge cluster trimmed. Clippings landed on the ground.",
+              },
+            ],
+          },
+        });
+      },
+
+      pullWeed: (plantId) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        const p = work.garden.plants[plantId];
+        if (!p) return;
+        if (p.kind === "flower") {
+          get().damageFlower(plantId);
+          return;
+        }
+        set({
+          work: {
+            ...work,
+            garden: applyGardenEvent(work.garden, {
+              id: `pull:${plantId}`,
+              type: "PLANT_ROOT_REMOVED",
+              plantId,
+              effort: 0.8,
+            }),
+            lastEvents: [
+              {
+                id: "pull",
+                kind: "progress",
+                zoneId: "flowerbed",
+                toolId: "hand-weeder",
+                explanation: "Weed pulled by the root. Debris left for cleanup.",
+              },
+            ],
+          },
+        });
+      },
+
+      topCutWeed: (plantId) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        const p = work.garden.plants[plantId];
+        if (!p) return;
+        if (p.kind === "flower") {
+          get().damageFlower(plantId);
+          return;
+        }
+        set({
+          work: {
+            ...work,
+            garden: applyGardenEvent(work.garden, {
+              id: `topcut:${plantId}`,
+              type: "PLANT_TOP_CUT",
+              plantId,
+              effort: 0.3,
+            }),
+            lastEvents: [
+              {
+                id: "topcut",
+                kind: "stubble",
+                zoneId: "flowerbed",
+                toolId: "string-trimmer",
+                explanation:
+                  "Tops cut — roots remain. The weed will need a proper pull later.",
+              },
+            ],
+          },
+        });
+      },
+
+      damageFlower: (plantId) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        set({
+          work: {
+            ...work,
+            garden: applyGardenEvent(work.garden, {
+              id: `flower-dmg:${plantId}`,
+              type: "ENVIRONMENT_DAMAGED",
+              targetId: plantId,
+              damageKind: "ornamental",
+            }),
+            lastEvents: [
+              {
+                id: "flower-dmg",
+                kind: "environment_damaged",
+                zoneId: "flowerbed",
+                toolId: work.selectedToolId ?? "",
+                explanation: "An ornamental flower was damaged. It stays that way.",
+              },
+            ],
+          },
+        });
+      },
+
+      rakeDebris: (x, z, dx, dz) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        let garden = gatherNearbyDebris(
+          work.garden,
+          x + dx * 0.4,
+          z + dz * 0.4,
+          1.1,
+          `rake:${work.garden.events.length}`,
+        );
+        // Also nudge nearby scattered leaves along rake direction
+        for (const d of Object.values(garden.debris)) {
+          if (d.state !== "scattered") continue;
+          if ((d.x - x) ** 2 + (d.z - z) ** 2 > 1.4 * 1.4) continue;
+          garden = applyGardenEvent(garden, {
+            id: `rake-nudge:${d.id}:${garden.events.length}`,
+            type: "DEBRIS_MOVED",
+            debrisId: d.id,
+            x: d.x + dx * 0.5,
+            z: d.z + dz * 0.5,
+          });
+        }
+        set({
+          work: {
+            ...work,
+            garden,
+            lastEvents: [
+              {
+                id: "rake",
+                kind: "progress",
+                zoneId: "debris",
+                toolId: "rake",
+                explanation: "Raked leaves along the path.",
+              },
+            ],
+          },
+        });
+      },
+
+      blowDebris: (x, z, dirX, dirZ) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        const len = Math.hypot(dirX, dirZ) || 1;
+        const nx = dirX / len;
+        const nz = dirZ / len;
+        let garden = work.garden;
+        for (const d of Object.values(garden.debris)) {
+          if (d.state === "bagged") continue;
+          const dist2 = (d.x - x) ** 2 + (d.z - z) ** 2;
+          if (dist2 > 2.2 * 2.2) continue;
+          // Cone: prefer debris roughly in front of blow direction
+          const toDx = d.x - x;
+          const toDz = d.z - z;
+          const toLen = Math.hypot(toDx, toDz) || 1;
+          const dot = (toDx / toLen) * nx + (toDz / toLen) * nz;
+          if (dot < 0.15 && dist2 > 0.4) continue;
+          const push = d.state === "gathered" ? 1.4 : 0.9;
+          garden = applyGardenEvent(garden, {
+            id: `blow:${d.id}:${garden.events.length}`,
+            type: "DEBRIS_MOVED",
+            debrisId: d.id,
+            x: d.x + nx * push,
+            z: d.z + nz * push,
+          });
+          // Blowing a pile scatters it
+          if (d.state === "gathered") {
+            garden = {
+              ...garden,
+              debris: {
+                ...garden.debris,
+                [d.id]: { ...garden.debris[d.id], state: "scattered" },
+              },
+              effort: {
+                ...garden.effort,
+                rework: garden.effort.rework + 0.3,
+              },
+            };
+          }
+        }
+        set({
+          work: {
+            ...work,
+            garden,
+            lastEvents: [
+              {
+                id: "blow",
+                kind: "progress",
+                zoneId: "debris",
+                toolId: "leaf-blower",
+                explanation: "Blower moved debris in the aim direction.",
+              },
+            ],
+          },
+        });
+      },
+
+      bagNearbyPiles: (x, z) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        const ids = Object.values(work.garden.debris)
+          .filter(
+            (d) =>
+              d.state === "gathered" &&
+              (d.x - x) ** 2 + (d.z - z) ** 2 <= 1.3 * 1.3,
+          )
+          .map((d) => d.id);
+        if (ids.length === 0) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "bag-miss",
+                  kind: "ineffective",
+                  zoneId: "debris",
+                  toolId: "bag",
+                  explanation: "No gathered pile nearby to bag.",
+                },
+              ],
+            },
+          });
+          return;
+        }
+        set({
+          work: {
+            ...work,
+            garden: applyGardenEvent(work.garden, {
+              id: `bag:${ids.join(",")}`,
+              type: "DEBRIS_BAGGED",
+              debrisIds: ids,
+            }),
+            lastEvents: [
+              {
+                id: "bag",
+                kind: "bagged",
+                zoneId: "debris",
+                toolId: "bag",
+                explanation: `Bagged ${ids.length} gathered pile(s).`,
+              },
+            ],
+          },
+        });
+      },
+
+      revisePlan: (orderedTaskIds) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        set({
+          work: {
+            ...work,
+            garden: applyGardenEvent(work.garden, {
+              id: `plan:${work.garden.plan.revision + 1}`,
+              type: "PLAN_REVISED",
+              orderedTaskIds,
+            }),
+          },
+        });
+      },
+
+      setReviewOpen: (open) => {
+        const work = withGarden(get().work);
+        if (!work.garden) return;
+        set({
+          work: {
+            ...work,
+            garden: { ...work.garden, reviewOpen: open },
+          },
+        });
+      },
+
       finishJob: (early) => {
         const { work } = get();
         const jobId = work.activeJobId;
@@ -402,13 +886,21 @@ export const useGameStore = create<GameState>()(
       migrate: (persisted) => {
         const p = persisted as { work?: import("@/game/work/types").WorkSnapshot };
         if (p?.work) {
-          return { ...p, work: migrateLawnIfNeeded(p.work) };
+          let work = migrateLawnIfNeeded(p.work);
+          if (work.schemaVersion === 3 && !work.garden) {
+            work = { ...work, garden: createFreshGardenDomain() };
+          }
+          return { ...p, work };
         }
         return persisted as never;
       },
       onRehydrateStorage: () => (state) => {
         if (state?.work) {
-          state.work = migrateLawnIfNeeded(state.work);
+          let work = migrateLawnIfNeeded(state.work);
+          if (work.schemaVersion === 3 && !work.garden) {
+            work = { ...work, garden: createFreshGardenDomain() };
+          }
+          state.work = work;
         }
         state?.setHydrated(true);
       },

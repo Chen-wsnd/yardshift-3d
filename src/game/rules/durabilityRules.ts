@@ -43,17 +43,22 @@ export function applyWear(
   tool: ToolInstance,
   profile: ToolProfile,
   strained = false,
+  opts?: { drainResource?: boolean },
 ): ToolInstance {
+  const drainResource = opts?.drainResource !== false;
   const mult = tool.condition < 20 || strained ? 2 : 1;
   const condition = Math.max(0, tool.condition - profile.wearPerStroke * mult);
   let status = tool.status;
   if (condition <= 0) status = "broken";
   let resource = tool.resource;
-  if (tool.resourceType === "battery" || tool.resourceType === "fuel") {
-    resource = Math.max(0, resource - 2);
-  }
-  if (tool.resourceType === "fluid") {
-    resource = Math.max(0, resource - 8);
+  // Garden lawn sweeps drain battery by path length separately — skip here to avoid double drain.
+  if (drainResource) {
+    if (tool.resourceType === "battery" || tool.resourceType === "fuel") {
+      resource = Math.max(0, resource - 2);
+    }
+    if (tool.resourceType === "fluid") {
+      resource = Math.max(0, resource - 8);
+    }
   }
   const next = markUnpoweredIfEmpty({
     ...tool,
@@ -62,6 +67,34 @@ export function applyWear(
     status: condition <= 0 ? "broken" : status,
   });
   return next;
+}
+
+/** Garden-mode free recharge — restores battery/fuel only, never unjams or unbreaks. */
+export function applyRecharge(tool: ToolInstance): {
+  tool: ToolInstance;
+  ok: boolean;
+  reason?: string;
+} {
+  if (tool.status === "broken") {
+    return { tool, ok: false, reason: "Broken tools need repair, not recharge." };
+  }
+  if (tool.status === "jammed") {
+    return { tool, ok: false, reason: "Clear the jam before recharging." };
+  }
+  if (tool.resourceType !== "battery" && tool.resourceType !== "fuel") {
+    return { tool, ok: false, reason: "This tool has no battery or fuel." };
+  }
+  if (tool.resource >= 99.5) {
+    return { tool, ok: false, reason: "Already fully charged." };
+  }
+  return {
+    ok: true,
+    tool: markUnpoweredIfEmpty({
+      ...tool,
+      resource: 100,
+      status: "ready",
+    }),
+  };
 }
 
 export function repairCost(tool: ToolInstance): number {

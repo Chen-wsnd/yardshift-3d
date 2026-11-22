@@ -50,36 +50,40 @@ describe("GardenDomain M1–M6 causality", () => {
     expect(Object.keys(g2.debris).length).toBe(count1);
   });
 
-  it("rake gathers then bag removes debris; re-trim after clean marks rework (M3)", () => {
+  it("rake gathers then bag removes debris; same-area re-clean after re-trim marks rework (M3)", () => {
     let g = createFreshGardenDomain();
-    const hedgeId = Object.keys(g.hedgeClusters)[0];
-    g = applyGardenEvent(g, {
-      id: `hedge-cut:${hedgeId}:a`,
-      type: "HEDGE_CLUSTER_CUT",
-      clusterId: hedgeId,
-      effort: 0.5,
-    });
-    const clip = Object.values(g.debris).find((d) => d.kind === "clipping")!;
-    g = gatherNearbyDebris(g, clip.x, clip.z, 2, "rake-1");
+    const east = Object.values(g.debris).find((d) =>
+      d.id.startsWith("leaf-east"),
+    )!;
+    g = gatherNearbyDebris(g, east.x, east.z, 1.5, "rake-1");
     const gathered = Object.values(g.debris).filter((d) => d.state === "gathered");
     expect(gathered.length).toBeGreaterThan(0);
     g = applyGardenEvent(g, {
       id: "bag-1",
       type: "DEBRIS_BAGGED",
       debrisIds: gathered.map((d) => d.id),
+      worldFootprint: { x: east.x, z: east.z, radius: 1.5 },
+      effort: 0.4,
     });
     expect(g.debris[gathered[0].id].state).toBe("bagged");
 
-    // Cut another cluster after cleanup → rework signal in review
-    const other = Object.keys(g.hedgeClusters).find(
-      (k) => !g.hedgeClusters[k].cut,
-    )!;
+    const near = Object.values(g.hedgeClusters).sort(
+      (a, b) =>
+        Math.hypot(a.x - east.x, a.z - east.z) -
+        Math.hypot(b.x - east.x, b.z - east.z),
+    )[0];
     g = applyGardenEvent(g, {
-      id: `hedge-cut:${other}:late`,
+      id: `hedge-cut:${near.id}:late`,
       type: "HEDGE_CLUSTER_CUT",
-      clusterId: other,
+      clusterId: near.id,
       effort: 0.5,
     });
+    // Spawn after clean is potential only — spent rework needs a second cleanup
+    expect(g.effort.rework).toBe(0);
+    const clip = Object.values(g.debris).find(
+      (d) => d.kind === "clipping" && d.state === "scattered",
+    )!;
+    g = gatherNearbyDebris(g, clip.x, clip.z, 1.5, "rake-2");
     const summary = buildReviewSummary(g);
     expect(summary.rework).toBeGreaterThan(0);
     expect(summary.reworkNotes.length).toBeGreaterThan(0);

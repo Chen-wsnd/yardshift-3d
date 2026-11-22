@@ -1,6 +1,6 @@
 # YardShift Asset Manifest
 
-Updated: 2026-11-22 — `feature/v06-yardshift-full-experience`
+Updated: 2026-11-22 — `feature/v06-experience-completion` (from `f19b6c1`)
 
 Status legend: `IN_REPO` · `ACTUALLY_USED` · `REFER_ONLY` · `CANDIDATE`
 
@@ -25,12 +25,13 @@ Pack: https://3dassets.dev/packs/lawn-mowing-simulator-kit
 | hedge-block.glb | Hedge overgrowth overlays on east hedge | ACTUALLY_USED |
 | dandelion.glb | Weed overlays (measured clump positions) | ACTUALLY_USED |
 | flower-bed-border.glb | Kit prop; scene nodes 115/116 locate flowerbed | IN_REPO (scene nodes used) |
-| hedge-trimmer.glb / garden-shears.glb | Kit tools (UI name + proxy mesh in stage) | IN_REPO; proxy in stage |
-| leaf-rake.glb / leaf-blower.glb / grass-bag.glb | Kit tools; debris stage proxies | IN_REPO; proxy in stage |
-| string-trimmer.glb | Edge / flowerbed powered top-cut | IN_REPO; proxy in stage |
+| hedge-trimmer.glb / garden-shears.glb | In-hand via `GardenToolView` (hedge/flowerbed) | ACTUALLY_USED |
+| leaf-rake.glb / leaf-blower.glb / grass-bag.glb | In-hand via `GardenToolView` (debris) | ACTUALLY_USED |
+| string-trimmer.glb | In-hand via `GardenToolView` (edge / top-cut) | ACTUALLY_USED |
 | picket-fence.glb / patio-chair.glb | Kit ambience via starter scene | ACTUALLY_USED (in starter) |
 
 Registry: `src/features/yard/assets/modelCatalog.ts`  
+In-hand mount: `src/features/garden/GardenToolView.tsx`  
 Placement: `src/data/gardenPlacement.ts`, `docs/v06-scene-placement-audit.json`
 
 ## Modifications

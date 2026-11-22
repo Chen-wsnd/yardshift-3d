@@ -13,6 +13,7 @@ import { DebrisTaskStage } from "./DebrisTaskStage";
 import { FlowerbedTaskStage } from "./FlowerbedTaskStage";
 import { HazardTaskStage } from "./HazardTaskStage";
 import { EdgeTaskStage } from "./EdgeTaskStage";
+import { useGameStore } from "@/game/store/gameStore";
 import { SceneRegistrationDebug } from "./SceneRegistrationDebug";
 
 export function GardenOverviewScene({
@@ -24,9 +25,14 @@ export function GardenOverviewScene({
 }) {
   const [dragging, setDragging] = useState(false);
   const task = activeTaskId ? getGardenTask(activeTaskId) : null;
+  const focus = useGameStore((s) => s.work.garden?.focusPoint);
   const debugPlacement =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).has("debugPlacement");
+  const orbitTarget =
+    activeTaskId === "debris" && focus
+      ? ([focus.x, 0, focus.z] as [number, number, number])
+      : (task?.camera.target ?? [0, 0, 0]);
 
   return (
     <>
@@ -84,11 +90,11 @@ export function GardenOverviewScene({
           ) : null}
           <OrbitControls
             makeDefault
-            target={task?.camera.target ?? [0, 0, 0]}
+            target={orbitTarget}
             maxPolarAngle={Math.PI / 2.35}
             minDistance={5}
             maxDistance={18}
-            enablePan={false}
+            enablePan={activeTaskId === "debris"}
             enabled={!dragging}
           />
         </>

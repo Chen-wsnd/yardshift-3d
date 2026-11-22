@@ -28,14 +28,15 @@ export function WorkPlanPanel({
     <div className="pointer-events-auto absolute right-3 top-14 z-20 w-72 rounded-lg bg-[#f7f3ea]/95 p-3 shadow-md ring-1 ring-stone-900/10">
       <div className="flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-lg">
-          Work plan
+          My arrangement
         </h2>
         <button type="button" className="text-sm text-stone-500" onClick={onClose}>
           Close
         </button>
       </div>
       <p className="mt-1 text-xs text-stone-500">
-        Optional. You can ignore this list and work in any order.
+        Optional notes for yourself — not a required order. Skip anytime and work
+        where you see fit.
       </p>
       <ol className="mt-3 space-y-1">
         {order.map((id, i) => {

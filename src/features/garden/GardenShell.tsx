@@ -33,7 +33,9 @@ export function GardenShell() {
   const rechargeTool = useGameStore((s) => s.rechargeTool);
   const clearJam = useGameStore((s) => s.clearJam);
   const setReviewOpen = useGameStore((s) => s.setReviewOpen);
+  const finishVisit = useGameStore((s) => s.finishVisit);
   const inspectObject = useGameStore((s) => s.inspectObject);
+  const setFocusPoint = useGameStore((s) => s.setFocusPoint);
 
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -129,6 +131,14 @@ export function GardenShell() {
                 <Button variant="secondary" onClick={() => setReviewOpen(true)}>
                   Work review
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    finishVisit();
+                  }}
+                >
+                  Finish visit
+                </Button>
               </>
             ) : null}
             <Button
@@ -167,15 +177,15 @@ export function GardenShell() {
           <WorkConfirm
             open={Boolean(pendingTask) && !activeTaskId}
             title={pendingTask?.prompt ?? "Start work?"}
-            body={
-              pendingTask
-                ? `Tools: ${pendingTask.tools.join(", ") || "hands / inspect"}`
-                : undefined
-            }
+            body={pendingTask?.strengthsLimits}
+            toolIds={pendingTask?.tools}
             onCancel={() => setPendingTaskId(null)}
             onConfirm={() => {
               if (!pendingTaskId) return;
               const task = getGardenTask(pendingTaskId);
+              if (pendingTaskId === "debris" && task) {
+                setFocusPoint({ x: task.center[0], z: task.center[2] });
+              }
               setActiveGardenTask(pendingTaskId);
               if (task?.tools[0]) selectTool(task.tools[0]);
               setPendingTaskId(null);

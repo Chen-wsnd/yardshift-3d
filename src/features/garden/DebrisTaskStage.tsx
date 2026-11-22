@@ -2,19 +2,29 @@
 
 import { useRef, useState } from "react";
 import { useGameStore } from "@/game/store/gameStore";
+import { GardenToolView } from "./GardenToolView";
 
+/**
+ * Yard-wide debris ops: work plane covers reachable ground; camera focus
+ * follows garden.focusPoint (click a pile in overview or here).
+ */
 export function DebrisTaskStage({
   onDragChange,
 }: {
   onDragChange?: (d: boolean) => void;
 }) {
   const selectedToolId = useGameStore((s) => s.work.selectedToolId);
+  const focus = useGameStore((s) => s.work.garden?.focusPoint);
   const rakeDebris = useGameStore((s) => s.rakeDebris);
   const blowDebris = useGameStore((s) => s.blowDebris);
   const bagNearbyPiles = useGameStore((s) => s.bagNearbyPiles);
+  const setFocusPoint = useGameStore((s) => s.setFocusPoint);
   const dragging = useRef(false);
   const last = useRef<{ x: number; z: number } | null>(null);
-  const [pos, setPos] = useState<[number, number, number]>([-3.0, 0.2, -4.2]);
+  const cx = focus?.x ?? -3.0;
+  const cz = focus?.z ?? -4.2;
+  const [pos, setPos] = useState<[number, number, number]>([cx, 0.2, cz]);
+  const [facing, setFacing] = useState<[number, number]>([0, 1]);
 
   const onMove = (x: number, z: number) => {
     const prev = last.current;
@@ -25,6 +35,7 @@ export function DebrisTaskStage({
     const dz = z - prev.z;
     const len = Math.hypot(dx, dz);
     if (len < 0.08) return;
+    setFacing([dx / len, dz / len]);
     if (selectedToolId === "rake") {
       rakeDebris(x, z, dx / len, dz / len);
     } else if (selectedToolId === "leaf-blower") {
@@ -34,17 +45,20 @@ export function DebrisTaskStage({
 
   return (
     <group>
+      {/* Large reachable ground — east hedge + SW path both covered */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[-3.2, 0.02, -4.0]}
+        position={[1.5, 0.02, -1.0]}
         onPointerDown={(e) => {
           e.stopPropagation();
+          setFocusPoint({ x: e.point.x, z: e.point.z });
           if (selectedToolId === "bag") {
             bagNearbyPiles(e.point.x, e.point.z);
             return;
           }
           dragging.current = true;
           last.current = { x: e.point.x, z: e.point.z };
+          setPos([e.point.x, 0.2, e.point.z]);
           onDragChange?.(true);
           (
             e.target as unknown as { setPointerCapture?: (id: number) => void }
@@ -61,21 +75,14 @@ export function DebrisTaskStage({
           onDragChange?.(false);
         }}
       >
-        <planeGeometry args={[10, 6]} />
-        <meshStandardMaterial color="#7a9a5a" transparent opacity={0.3} />
+        <planeGeometry args={[16, 14]} />
+        <meshStandardMaterial color="#7a9a5a" transparent opacity={0.12} />
       </mesh>
-      <mesh position={pos}>
-        <cylinderGeometry args={[0.08, 0.12, 0.9, 6]} />
-        <meshStandardMaterial
-          color={
-            selectedToolId === "leaf-blower"
-              ? "#2a6db0"
-              : selectedToolId === "bag"
-                ? "#8a6a3a"
-                : "#6a5"
-          }
-        />
-      </mesh>
+      <GardenToolView
+        toolId={selectedToolId}
+        position={pos}
+        facing={facing}
+      />
     </group>
   );
 }

@@ -1,8 +1,10 @@
+import { appendCleanupRecord, isReworkCleanup } from "./spatialRework";
 import type {
   DebrisEntity,
+  EffortLedger,
   GardenDomain,
   GardenEvent,
-  EffortLedger,
+  WorldFootprint,
 } from "./types";
 
 function pushUnique(
@@ -90,6 +92,13 @@ export function applyGardenEvent(
       };
       break;
     }
+    case "EDGE_WORKED": {
+      next = {
+        ...next,
+        effort: addEffort(next.effort, "productive", event.effort),
+      };
+      break;
+    }
     case "HEDGE_CLUSTER_CUT": {
       const c = next.hedgeClusters[event.clusterId];
       if (c && !c.cut) {
@@ -102,7 +111,6 @@ export function applyGardenEvent(
           state: "scattered",
           sourceActionId: event.id,
         };
-        // Only spawn if not already present (idempotent)
         const debrisMap = next.debris[debrisId]
           ? next.debris
           : { ...next.debris, [debrisId]: debris };
@@ -119,7 +127,6 @@ export function applyGardenEvent(
           debris: debrisMap,
           effort: addEffort(next.effort, "productive", event.effort),
         };
-        // Also record spawn event as applied without double-counting debris
         if (!next.appliedEventIds.includes(`spawn:${debrisId}`)) {
           next = {
             ...next,
@@ -234,10 +241,12 @@ export function applyGardenEvent(
           debris[id] = { ...debris[id], state: "gathered" };
         }
       }
+      const effortAmt = event.effort ?? 0.5;
+      const kind = event.isRework ? "rework" : "productive";
       next = {
         ...next,
         debris,
-        effort: addEffort(next.effort, "productive", 0.5),
+        effort: addEffort(next.effort, kind, effortAmt),
       };
       break;
     }
@@ -250,10 +259,12 @@ export function applyGardenEvent(
           count++;
         }
       }
+      const effortAmt = event.effort ?? count * 0.4;
+      const kind = event.isRework ? "rework" : "productive";
       next = {
         ...next,
         debris,
-        effort: addEffort(next.effort, "productive", count * 0.4),
+        effort: addEffort(next.effort, kind, effortAmt),
       };
       break;
     }
@@ -268,6 +279,15 @@ export function applyGardenEvent(
           },
         };
       }
+      break;
+    }
+    case "VISIT_FINISHED": {
+      next = {
+        ...next,
+        visitFinished: true,
+        lastVisitNote: event.summaryNote ?? next.lastVisitNote,
+        reviewOpen: true,
+      };
       break;
     }
     default:
@@ -294,7 +314,7 @@ export function moveDebrisToward(
   });
 }
 
-/** Cluster nearby scattered debris into gathered piles near centroid. */
+/** Cluster nearby scattered debris; marks rework only if same prior cleanup footprint. */
 export function gatherNearbyDebris(
   domain: GardenDomain,
   originX: number,
@@ -310,7 +330,15 @@ export function gatherNearbyDebris(
     )
     .map((d) => d.id);
   if (ids.length === 0) return domain;
-  // Pull toward origin slightly then mark gathered
+
+  const footprint: WorldFootprint = {
+    x: originX,
+    z: originZ,
+    radius,
+    areaId: "debris",
+  };
+  const rework = isReworkCleanup(domain, footprint);
+
   let next = domain;
   for (const id of ids) {
     const d = next.debris[id];
@@ -323,11 +351,51 @@ export function gatherNearbyDebris(
       debrisId: id,
       x: nx,
       z: nz,
+      worldFootprint: footprint,
     });
   }
-  return applyGardenEvent(next, {
+  next = applyGardenEvent(next, {
     id: `${eventId}:gather`,
     type: "DEBRIS_GATHERED",
     debrisIds: ids,
+    worldFootprint: footprint,
+    effort: 0.5,
+    isRework: rework,
   });
+  return appendCleanupRecord(next, footprint, ids, eventId);
+}
+
+export function bagDebrisAt(
+  domain: GardenDomain,
+  originX: number,
+  originZ: number,
+  radius: number,
+  eventId: string,
+): { domain: GardenDomain; bagged: string[] } {
+  const ids = Object.values(domain.debris)
+    .filter(
+      (d) =>
+        d.state === "gathered" &&
+        (d.x - originX) ** 2 + (d.z - originZ) ** 2 <= radius * radius,
+    )
+    .map((d) => d.id);
+  if (ids.length === 0) return { domain, bagged: [] };
+
+  const footprint: WorldFootprint = {
+    x: originX,
+    z: originZ,
+    radius,
+    areaId: "debris",
+  };
+  const rework = isReworkCleanup(domain, footprint);
+  let next = applyGardenEvent(domain, {
+    id: eventId,
+    type: "DEBRIS_BAGGED",
+    debrisIds: ids,
+    worldFootprint: footprint,
+    effort: ids.length * 0.4,
+    isRework: rework,
+  });
+  next = appendCleanupRecord(next, footprint, ids, eventId);
+  return { domain: next, bagged: ids };
 }

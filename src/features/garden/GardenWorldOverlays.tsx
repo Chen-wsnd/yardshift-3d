@@ -32,6 +32,8 @@ function HedgeOverlays() {
 
 function DebrisOverlays() {
   const debris = useGameStore((s) => s.work.garden?.debris);
+  const setFocusPoint = useGameStore((s) => s.setFocusPoint);
+  const setActiveGardenTask = useGameStore((s) => s.setActiveGardenTask);
   if (!debris) return null;
   return (
     <group>
@@ -41,6 +43,11 @@ function DebrisOverlays() {
           <mesh
             key={d.id}
             position={[d.x, d.state === "gathered" ? 0.18 : 0.06, d.z]}
+            onClick={(e) => {
+              e.stopPropagation();
+              setFocusPoint({ x: d.x, z: d.z });
+              setActiveGardenTask("debris");
+            }}
           >
             <sphereGeometry
               args={[d.state === "gathered" ? 0.28 : 0.12, 6, 6]}

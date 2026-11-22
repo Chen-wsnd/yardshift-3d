@@ -3,6 +3,7 @@ import {
   MEASURED_DANDELIONS,
   MEASURED_FLOWERS,
 } from "@/data/gardenPlacement";
+import { createEdgeSegments } from "./edgeFixtures";
 import type {
   DebrisEntity,
   GardenDomain,
@@ -29,7 +30,6 @@ export function createHedgeClusters(): Record<string, HedgeCluster> {
   const out: Record<string, HedgeCluster> = {};
   HEDGE_EAST_NODES.forEach((node, i) => {
     const id = `hedge-cluster-${i}`;
-    // MANUAL_OFFSET: −0.65m X toward lawn from measured centre
     out[id] = {
       id,
       x: node.center[0] - 0.65,
@@ -38,7 +38,6 @@ export function createHedgeClusters(): Record<string, HedgeCluster> {
       overcut: false,
     };
   });
-  // Extra mid-face clusters between blocks for denser overgrowth
   const extras: [number, number][] = [
     [6.35, 4.0],
     [6.35, 2.0],
@@ -67,7 +66,6 @@ export function createPlants(): Record<string, PlantEntity> {
       ornamentalDamage: false,
     };
   });
-  // Extra weeds along west flower border (near MEASURED border pieces)
   const borderWeeds: [number, number][] = [
     [-6.0, 1.8],
     [-6.05, 2.6],
@@ -103,7 +101,6 @@ export function createHazards(): Record<string, HazardEntity> {
   return {
     "lawn-stone-1": {
       id: "lawn-stone-1",
-      // NW of P0 lawn work grid — discoverable, off centreline mow tests
       x: -3.6,
       z: 3.1,
       cleared: false,
@@ -112,7 +109,6 @@ export function createHazards(): Record<string, HazardEntity> {
     },
     "hedge-hardwood-1": {
       id: "hedge-hardwood-1",
-      // Near measured hedge 057 (7, 0.999) — lawn-ward face
       x: 6.35,
       z: 1.0,
       cleared: false,
@@ -122,46 +118,58 @@ export function createHazards(): Record<string, HazardEntity> {
   };
 }
 
-/** Initial leaf scatter near MEASURED path slabs (south-west). */
+/**
+ * Initial debris: SW path leaves + light east-hedge litter so same-spot
+ * clean→trim→re-clean is playable on a fresh yard (guidance F08).
+ */
 export function createInitialDebris(): Record<string, DebrisEntity> {
-  const spots: [number, number][] = [
-    [-4.5, -4.4],
-    [-3.5, -4.2],
-    [-2.8, -4.5],
-    [-5.2, -3.8],
-    [-3.0, -3.9],
+  const spots: { id: string; x: number; z: number; kind: string }[] = [
+    { id: "leaf-sw-0", x: -4.5, z: -4.4, kind: "leaf" },
+    { id: "leaf-sw-1", x: -3.5, z: -4.2, kind: "leaf" },
+    { id: "leaf-sw-2", x: -2.8, z: -4.5, kind: "leaf" },
+    { id: "leaf-sw-3", x: -5.2, z: -3.8, kind: "leaf" },
+    { id: "leaf-sw-4", x: -3.0, z: -3.9, kind: "leaf" },
+    // East hedge face — enables same-area rework demo
+    { id: "leaf-east-0", x: 6.2, z: 1.1, kind: "leaf" },
+    { id: "leaf-east-1", x: 6.4, z: 0.2, kind: "leaf" },
+    { id: "leaf-east-2", x: 6.3, z: -1.0, kind: "leaf" },
   ];
   const out: Record<string, DebrisEntity> = {};
-  spots.forEach(([x, z], i) => {
-    const id = `leaf-initial-${i}`;
-    out[id] = {
-      id,
-      kind: "leaf",
-      x,
-      z,
+  for (const s of spots) {
+    out[s.id] = {
+      id: s.id,
+      kind: s.kind,
+      x: s.x,
+      z: s.z,
       state: "scattered",
       sourceActionId: "fixture-initial",
     };
-  });
+  }
   return out;
 }
 
 export function createFreshGardenDomain(): GardenDomain {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     inspection: {},
     hazards: createHazards(),
     hedgeClusters: createHedgeClusters(),
     plants: createPlants(),
     debris: createInitialDebris(),
+    edgeSegments: createEdgeSegments(),
+    cleanupHistory: [],
     plan: {
-      taskOrder: ["hazard", "hedge", "lawn", "edge", "flowerbed", "debris"],
+      // Observed work list — not an expert order claim
+      taskOrder: ["lawn", "hedge", "debris", "flowerbed", "edge", "hazard"],
       revision: 0,
     },
     effort: emptyEffort(),
     events: [],
     appliedEventIds: [],
     activeTaskId: null,
+    focusPoint: null,
     reviewOpen: false,
+    visitFinished: false,
+    lastVisitNote: null,
   };
 }

@@ -5,33 +5,48 @@ import { buildReviewSummary } from "@/game/garden/reviewSelectors";
 import { useGameStore } from "@/game/store/gameStore";
 
 export function WorkReviewPanel() {
-  const garden = useGameStore((s) => s.work.garden);
+  const work = useGameStore((s) => s.work);
+  const garden = work.garden;
   const setReviewOpen = useGameStore((s) => s.setReviewOpen);
   const startV03Garden = useGameStore((s) => s.startV03Garden);
+  const finishVisit = useGameStore((s) => s.finishVisit);
   if (!garden?.reviewOpen) return null;
-  const summary = buildReviewSummary(garden);
+  const summary = buildReviewSummary(garden, work);
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-stone-950/35 p-4">
       <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg bg-[#f7f3ea] p-5 shadow-xl ring-1 ring-stone-900/10">
         <h2 className="font-[family-name:var(--font-display)] text-2xl text-stone-900">
-          Work review
+          {garden.visitFinished ? "Visit summary" : "Work review"}
         </h2>
         <p className="mt-1 text-sm text-stone-600">
-          Numbers come from what you actually did — not a fixed “wrong order”
-          penalty.
+          From what you actually did — not a fixed “wrong order” penalty.
         </p>
-        <dl className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div className="rounded bg-white/70 px-3 py-2">
+            <dt className="text-stone-500">Lawn done</dt>
+            <dd className="text-lg font-medium">
+              {Math.round(summary.lawnFinishedPct)}%
+            </dd>
+          </div>
+          <div className="rounded bg-white/70 px-3 py-2">
+            <dt className="text-stone-500">Edge done</dt>
+            <dd className="text-lg font-medium">
+              {Math.round(summary.edgeFinishedPct)}%
+            </dd>
+          </div>
           <div className="rounded bg-white/70 px-3 py-2">
             <dt className="text-stone-500">Productive</dt>
-            <dd className="text-lg font-medium">{summary.productive.toFixed(1)}</dd>
+            <dd className="text-lg font-medium">
+              {summary.productive.toFixed(1)}
+            </dd>
           </div>
           <div className="rounded bg-white/70 px-3 py-2">
             <dt className="text-stone-500">Setup / prep</dt>
             <dd className="text-lg font-medium">{summary.setup.toFixed(1)}</dd>
           </div>
           <div className="rounded bg-white/70 px-3 py-2">
-            <dt className="text-stone-500">Rework</dt>
+            <dt className="text-stone-500">Rework (spent)</dt>
             <dd className="text-lg font-medium">{summary.rework.toFixed(1)}</dd>
           </div>
           <div className="rounded bg-white/70 px-3 py-2">
@@ -41,15 +56,23 @@ export function WorkReviewPanel() {
             </dd>
           </div>
         </dl>
+        {summary.completionNotes.length ? (
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-stone-800">
+            {summary.completionNotes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        ) : null}
         {summary.reworkNotes.length ? (
-          <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-amber-900">
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-900">
             {summary.reworkNotes.map((n) => (
               <li key={n}>{n}</li>
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-sm text-emerald-800">
-            Little rework detected — cleanup stayed ahead of new clippings.
+          <p className="mt-3 text-sm text-emerald-800">
+            Little spent rework — cleanups stayed ahead of new clippings where you
+            worked.
           </p>
         )}
         {summary.qualityNotes.length ? (
@@ -58,28 +81,57 @@ export function WorkReviewPanel() {
               <li key={n}>{n}</li>
             ))}
           </ul>
-        ) : (
+        ) : summary.canFinishWell ? (
           <p className="mt-3 text-sm text-emerald-800">
-            Quality looks acceptable for a first pass.
+            Safety and coverage look acceptable for finishing this visit.
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-amber-900">
+            More work remains before this yard looks professionally finished.
           </p>
         )}
         <p className="mt-3 text-xs text-stone-500">
-          Expert sample (discussion only): clear hazards → hedge → mow → gather
-          debris once. Your path can differ if quality and safety hold.
+          One possible approach (not the only good one): clear local hazards →
+          trim/mow work that drops debris → gather once. Your path can differ if
+          quality and safety hold.
         </p>
+        {garden.lastVisitNote ? (
+          <p className="mt-2 text-xs italic text-stone-500">
+            Previous note: {garden.lastVisitNote}
+          </p>
+        ) : null}
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={() => setReviewOpen(false)}>
             Keep working
           </Button>
+          {!garden.visitFinished ? (
+            <Button variant="secondary" onClick={() => finishVisit()}>
+              Finish this visit
+            </Button>
+          ) : null}
           <Button
             variant="secondary"
             onClick={() => {
               if (
                 window.confirm(
-                  "Start a fresh garden with the same conditions? (saves v0.1/v0.2 untouched)",
+                  "Start a fresh garden with the same conditions? Prior visit note is kept in memory until reset.",
                 )
               ) {
+                const note = garden.lastVisitNote;
                 startV03Garden();
+                if (note) {
+                  useGameStore.setState((s) => ({
+                    work: s.work.garden
+                      ? {
+                          ...s.work,
+                          garden: {
+                            ...s.work.garden,
+                            lastVisitNote: note,
+                          },
+                        }
+                      : s.work,
+                  }));
+                }
               }
             }}
           >

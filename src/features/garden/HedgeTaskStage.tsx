@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useGameStore } from "@/game/store/gameStore";
+import { GardenToolView } from "./GardenToolView";
 
 export function HedgeTaskStage({
   onDragChange,
@@ -11,9 +12,11 @@ export function HedgeTaskStage({
   const clusters = useGameStore((s) => s.work.garden?.hedgeClusters);
   const selectedToolId = useGameStore((s) => s.work.selectedToolId);
   const cutHedgeCluster = useGameStore((s) => s.cutHedgeCluster);
+  const setFocusPoint = useGameStore((s) => s.setFocusPoint);
   const dragging = useRef(false);
   const hit = useRef<Set<string>>(new Set());
   const [cursor, setCursor] = useState<[number, number, number]>([6.4, 0.8, 1]);
+  const [facing, setFacing] = useState<[number, number]>([0, 1]);
 
   if (!clusters) return null;
   const powered = selectedToolId === "hedge-trimmer";
@@ -21,7 +24,7 @@ export function HedgeTaskStage({
 
   const stroke = (x: number, z: number) => {
     if (!selectedToolId) return;
-    setCursor([x, 0.8, z]);
+    setCursor([x, 0.55, z]);
     const list = Object.values(clusters);
     for (const c of list) {
       if (c.cut && !powered) continue;
@@ -29,15 +32,16 @@ export function HedgeTaskStage({
       if (d2 > radius * radius) continue;
       if (hit.current.has(c.id) && !powered) continue;
       hit.current.add(c.id);
-      // Powered sweep over already-cut cluster → overcut risk
       const overcut = powered && c.cut;
       cutHedgeCluster(c.id, selectedToolId, overcut);
+      setFocusPoint({ x: c.x, z: c.z + 0.35 });
     }
   };
 
   return (
     <group>
       <mesh
+        // Vertical-ish work strip along hedge face (XZ projection of face)
         rotation={[-Math.PI / 2, 0, 0]}
         position={[6.4, 0.02, 1]}
         onPointerDown={(e) => {
@@ -53,6 +57,10 @@ export function HedgeTaskStage({
         onPointerMove={(e) => {
           if (!dragging.current) return;
           e.stopPropagation();
+          const prev = cursor;
+          const dx = e.point.x - prev[0];
+          const dz = e.point.z - prev[2];
+          if (Math.hypot(dx, dz) > 0.04) setFacing([dx, dz]);
           stroke(e.point.x, e.point.z);
         }}
         onPointerUp={() => {
@@ -61,13 +69,13 @@ export function HedgeTaskStage({
         }}
       >
         <planeGeometry args={[4.5, 12]} />
-        <meshStandardMaterial color="#6a8a55" transparent opacity={0.35} />
+        <meshStandardMaterial color="#6a8a55" transparent opacity={0.2} />
       </mesh>
-      {/* Visible tool proxy */}
-      <mesh position={cursor}>
-        <boxGeometry args={powered ? [1.4, 0.2, 0.35] : [0.35, 0.55, 0.12]} />
-        <meshStandardMaterial color={powered ? "#2a6db0" : "#888"} />
-      </mesh>
+      <GardenToolView
+        toolId={selectedToolId}
+        position={cursor}
+        facing={facing}
+      />
     </group>
   );
 }

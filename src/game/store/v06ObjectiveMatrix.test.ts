@@ -8,7 +8,7 @@ import { HEDGE_EAST_NODES } from "@/data/gardenPlacement";
 import { createFreshV03GardenSnapshot, V03_GARDEN_JOB_ID } from "@/game/work/gardenFixtures";
 import { migrateLawnIfNeeded } from "@/game/work/gardenFixtures";
 import { createFreshGardenDomain } from "@/game/garden/fixtures";
-import { applyGardenEvent } from "@/game/garden/reducer";
+import { applyGardenEvent, gatherNearbyDebris } from "@/game/garden/reducer";
 import { buildReviewSummary } from "@/game/garden/reviewSelectors";
 import { useGameStore } from "./gameStore";
 
@@ -217,47 +217,56 @@ describe("v06 objective matrix", () => {
   });
 
   it("review-derived A/B: clean-then-hedge has more rework than hedge-then-clean", () => {
-    // Path A: hedge then clean
+    // Path A: hedge then clean once — no second pass
     let a = createFreshGardenDomain();
-    const hA = Object.keys(a.hedgeClusters)[0];
+    const eastA = Object.values(a.debris).find((d) =>
+      d.id.startsWith("leaf-east"),
+    )!;
+    const hA = Object.values(a.hedgeClusters).sort(
+      (x, y) =>
+        Math.hypot(x.x - eastA.x, x.z - eastA.z) -
+        Math.hypot(y.x - eastA.x, y.z - eastA.z),
+    )[0];
     a = applyGardenEvent(a, {
       id: "a-cut",
       type: "HEDGE_CLUSTER_CUT",
-      clusterId: hA,
+      clusterId: hA.id,
       effort: 0.5,
     });
     const clipA = Object.values(a.debris).find((d) => d.kind === "clipping")!;
-    a = applyGardenEvent(a, {
-      id: "a-g",
-      type: "DEBRIS_GATHERED",
-      debrisIds: [clipA.id],
-    });
-    a = applyGardenEvent(a, {
-      id: "a-b",
-      type: "DEBRIS_BAGGED",
-      debrisIds: [clipA.id],
-    });
+    a = gatherNearbyDebris(a, clipA.x, clipA.z, 1.5, "a-rake");
 
-    // Path B: bag initial leaves, then hedge → spawn after clean
+    // Path B: clean east → cut → clean again → spent rework
     let b = createFreshGardenDomain();
-    const leaf = Object.values(b.debris).find((d) => d.kind === "leaf")!;
-    b = applyGardenEvent(b, {
-      id: "b-g",
-      type: "DEBRIS_GATHERED",
-      debrisIds: [leaf.id],
-    });
+    const eastB = Object.values(b.debris).find((d) =>
+      d.id.startsWith("leaf-east"),
+    )!;
+    b = gatherNearbyDebris(b, eastB.x, eastB.z, 1.5, "b-rake-1");
+    const idsB = Object.values(b.debris)
+      .filter((d) => d.state === "gathered")
+      .map((d) => d.id);
     b = applyGardenEvent(b, {
       id: "b-b",
       type: "DEBRIS_BAGGED",
-      debrisIds: [leaf.id],
+      debrisIds: idsB,
+      worldFootprint: { x: eastB.x, z: eastB.z, radius: 1.5 },
+      effort: 0.4,
     });
-    const hB = Object.keys(b.hedgeClusters)[0];
+    const hB = Object.values(b.hedgeClusters).sort(
+      (x, y) =>
+        Math.hypot(x.x - eastB.x, x.z - eastB.z) -
+        Math.hypot(y.x - eastB.x, y.z - eastB.z),
+    )[0];
     b = applyGardenEvent(b, {
       id: "b-cut",
       type: "HEDGE_CLUSTER_CUT",
-      clusterId: hB,
+      clusterId: hB.id,
       effort: 0.5,
     });
+    const clipB = Object.values(b.debris).find(
+      (d) => d.kind === "clipping" && d.state === "scattered",
+    )!;
+    b = gatherNearbyDebris(b, clipB.x, clipB.z, 1.5, "b-rake-2");
 
     const sumA = buildReviewSummary(a);
     const sumB = buildReviewSummary(b);

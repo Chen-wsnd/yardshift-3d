@@ -1,3 +1,7 @@
+import { LAWN_ZONE_ID } from "@/data/lawnGrid";
+import { V03_GARDEN_JOB_ID } from "@/game/work/gardenFixtures";
+import type { WorkSnapshot } from "@/game/work/types";
+import { countPotentialRedirty } from "./spatialRework";
 import type { GardenDomain } from "./types";
 
 export interface ReviewSummary {
@@ -9,51 +13,53 @@ export interface ReviewSummary {
   total: number;
   qualityNotes: string[];
   reworkNotes: string[];
+  completionNotes: string[];
   unresolvedHazards: number;
   uncutHedge: number;
   looseDebris: number;
   weedsWithRoots: number;
   damagedFlowers: number;
+  lawnFinishedPct: number;
+  edgeFinishedPct: number;
   canFinishWell: boolean;
+  potentialRedirty: number;
+}
+
+function lawnFinishedPct(work: WorkSnapshot | undefined): number {
+  if (!work) return 0;
+  const job = work.jobs[V03_GARDEN_JOB_ID];
+  const lawn = job?.zones.find((z) => z.id === LAWN_ZONE_ID);
+  if (!lawn || lawn.cells.length === 0) return 0;
+  const done = lawn.cells.filter(
+    (c) =>
+      c.protectedKind === "flower" ||
+      c.remainingWork <= 0 ||
+      c.result === "finished" ||
+      c.result === "scalped",
+  ).length;
+  return (done / lawn.cells.length) * 100;
+}
+
+function edgeFinishedPct(domain: GardenDomain): number {
+  const segs = Object.values(domain.edgeSegments ?? {});
+  if (segs.length === 0) return 100;
+  const done = segs.filter((s) => s.finished || s.remaining <= 0).length;
+  return (done / segs.length) * 100;
 }
 
 /**
- * Derive review metrics from real events — no fixed wrong-order penalty.
- * Rework = extra cleanup after a region was already cleaned (DEBRIS_SPAWNED after bag/gather).
+ * Derive review from real events + WorkSnapshot.
+ * Rework effort comes only from cleanup actions marked isRework (same footprint
+ * cleaned, then re-dirtied, then cleaned again) — never from plan order.
  */
-export function buildReviewSummary(domain: GardenDomain): ReviewSummary {
+export function buildReviewSummary(
+  domain: GardenDomain,
+  work?: WorkSnapshot,
+): ReviewSummary {
   const e = domain.effort;
-  const total =
-    e.productive + e.setup + e.rework + e.ineffective + e.recovery;
+  const total = e.productive + e.setup + e.rework + e.ineffective + e.recovery;
 
-  const cleanedThenDirtied: string[] = [];
-  const bagOrGatherTimes = new Map<string, number>();
-  // Approximate spatial cells that were cleaned
-  let cleanEvents = 0;
-  let spawnAfterClean = 0;
-  for (const ev of domain.events) {
-    if (ev.type === "DEBRIS_BAGGED" || ev.type === "DEBRIS_GATHERED") {
-      cleanEvents++;
-      bagOrGatherTimes.set(ev.id, domain.events.indexOf(ev));
-    }
-    if (ev.type === "DEBRIS_SPAWNED" && ev.kind === "clipping") {
-      // If any bag/gather happened before this spawn → rework signal
-      const priorClean = domain.events
-        .slice(0, domain.events.indexOf(ev))
-        .some(
-          (x) => x.type === "DEBRIS_BAGGED" || x.type === "DEBRIS_GATHERED",
-        );
-      if (priorClean) {
-        spawnAfterClean++;
-        cleanedThenDirtied.push(
-          `Clippings fell at (${ev.x.toFixed(1)}, ${ev.z.toFixed(1)}) after you had already cleaned.`,
-        );
-      }
-    }
-  }
-
-  const rework =
-    e.rework + spawnAfterClean * 1.2; // event-derived rework units
+  const redirt = countPotentialRedirty(domain);
 
   const unresolvedHazards = Object.values(domain.hazards).filter(
     (h) => !h.cleared,
@@ -70,9 +76,22 @@ export function buildReviewSummary(domain: GardenDomain): ReviewSummary {
   const damagedFlowers = Object.values(domain.plants).filter(
     (p) => p.kind === "flower" && p.ornamentalDamage,
   ).length;
+  const lawnPct = lawnFinishedPct(work);
+  const edgePct = edgeFinishedPct(domain);
 
   const qualityNotes: string[] = [];
-  if (uncutHedge > 0) qualityNotes.push(`${uncutHedge} hedge clusters still overgrown.`);
+  const completionNotes: string[] = [];
+
+  if (lawnPct < 70)
+    completionNotes.push(
+      `Lawn about ${Math.round(lawnPct)}% finished — major open grass still uncut.`,
+    );
+  if (edgePct < 70)
+    completionNotes.push(
+      `Path edge about ${Math.round(edgePct)}% finished — mowing alone does not tidy the edge.`,
+    );
+  if (uncutHedge > 0)
+    qualityNotes.push(`${uncutHedge} hedge clusters still overgrown.`);
   if (weedsWithRoots > 0)
     qualityNotes.push(
       `${weedsWithRoots} weeds still have roots (top-cutting is not enough).`,
@@ -84,20 +103,26 @@ export function buildReviewSummary(domain: GardenDomain): ReviewSummary {
   if (unresolvedHazards > 0)
     qualityNotes.push(`${unresolvedHazards} hazards still present.`);
 
-  const reworkNotes = [...cleanedThenDirtied];
-  if (spawnAfterClean > 0) {
-    reworkNotes.unshift(
-      `You cleaned once, then new clippings appeared ${spawnAfterClean} time(s) — that is real rework.`,
+  const reworkNotes: string[] = [];
+  if (e.rework > 0.01) {
+    reworkNotes.push(
+      `You spent ${e.rework.toFixed(1)} effort units re-cleaning areas that had already been cleared and then dirtied again.`,
     );
   }
-  if (cleanEvents > 1 && spawnAfterClean === 0) {
+  if (redirt.count > 0) {
     reworkNotes.push(
-      `Multiple gather/bag actions (${cleanEvents}) — check whether the same area was worked twice.`,
+      `${redirt.count} new clipping pile(s) landed on previously cleaned ground` +
+        (e.rework > 0.01
+          ? " — you already cleaned some of that again."
+          : " — still waiting for a second cleanup (not yet counted as spent rework)."),
     );
+    reworkNotes.push(...redirt.notes.slice(0, 4));
   }
 
   const canFinishWell =
     unresolvedHazards === 0 &&
+    lawnPct >= 70 &&
+    edgePct >= 50 &&
     uncutHedge <= 2 &&
     weedsWithRoots <= 1 &&
     looseDebris <= 4;
@@ -105,17 +130,21 @@ export function buildReviewSummary(domain: GardenDomain): ReviewSummary {
   return {
     productive: e.productive,
     setup: e.setup,
-    rework,
+    rework: e.rework,
     ineffective: e.ineffective,
     recovery: e.recovery,
-    total: total + spawnAfterClean * 1.2 - e.rework + e.rework,
+    total,
     qualityNotes,
     reworkNotes,
+    completionNotes,
     unresolvedHazards,
     uncutHedge,
     looseDebris,
     weedsWithRoots,
     damagedFlowers,
+    lawnFinishedPct: lawnPct,
+    edgeFinishedPct: edgePct,
     canFinishWell,
+    potentialRedirty: redirt.count,
   };
 }

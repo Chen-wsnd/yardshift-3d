@@ -1,21 +1,27 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { EQUIPMENT_PROFILES } from "@/data/equipmentProfiles";
 
 export function WorkConfirm({
   open,
   title,
   body,
+  toolIds,
   onConfirm,
   onCancel,
 }: {
   open: boolean;
   title: string;
   body?: string;
+  toolIds?: string[];
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   if (!open) return null;
+  const toolNames = (toolIds ?? [])
+    .map((id) => EQUIPMENT_PROFILES.find((p) => p.id === id)?.name ?? id)
+    .join(", ");
 
   return (
     <div
@@ -33,6 +39,11 @@ export function WorkConfirm({
         </h2>
         {body ? (
           <p className="mt-2 text-sm text-stone-600">{body}</p>
+        ) : null}
+        {toolNames ? (
+          <p className="mt-2 text-sm text-stone-600">
+            Tools: {toolNames || "hands / inspect"}
+          </p>
         ) : null}
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={onCancel}>

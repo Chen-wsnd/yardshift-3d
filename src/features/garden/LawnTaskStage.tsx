@@ -2,6 +2,8 @@
 
 import { Suspense, useMemo, useRef, useState } from "react";
 import { useGLTF } from "@react-three/drei";
+import { evaluateToolIntent } from "@/game/interaction/evaluateToolIntent";
+import { useHoverIntent } from "@/game/interaction/hoverIntentStore";
 import { useGameStore } from "@/game/store/gameStore";
 import { V03_GARDEN_JOB_ID } from "@/game/work/gardenFixtures";
 import {
@@ -48,12 +50,18 @@ export function LawnTaskStage({
 }) {
   const job = useGameStore((s) => s.work.jobs[V03_GARDEN_JOB_ID]);
   const selectedToolId = useGameStore((s) => s.work.selectedToolId);
+  const garden = useGameStore((s) => s.work.garden);
+  const tool = useGameStore((s) =>
+    s.work.selectedToolId ? s.work.tools[s.work.selectedToolId] : null,
+  );
   const performWorkAction = useGameStore((s) => s.performWorkAction);
   const toolResource = useGameStore((s) =>
     s.work.selectedToolId
       ? s.work.tools[s.work.selectedToolId]?.resource
       : 100,
   );
+  const setHover = useHoverIntent((s) => s.setHover);
+  const clearHover = useHoverIntent((s) => s.clearHover);
   const zone = job?.zones.find((z) => z.id === LAWN_ZONE_ID);
 
   const dragging = useRef(false);
@@ -189,6 +197,20 @@ export function LawnTaskStage({
           ).setPointerCapture?.(e.pointerId);
         }}
         onPointerMove={(e) => {
+          // Preview risk near stones — zero cost (hover only)
+          const intent = evaluateToolIntent(
+            selectedToolId,
+            { kind: "lawn", x: e.point.x, z: e.point.z },
+            { garden, tool },
+          );
+          if (intent.level === "risk" || intent.level === "unavailable") {
+            setHover(
+              { kind: "lawn", id: "lawn-near-hazard" },
+              intent,
+            );
+          } else if (!dragging.current) {
+            clearHover();
+          }
           if (!dragging.current) return;
           e.stopPropagation();
           onMove(e.point);
@@ -202,6 +224,7 @@ export function LawnTaskStage({
           endDrag();
         }}
         onPointerLeave={() => {
+          clearHover();
           if (dragging.current) endDrag();
         }}
       >

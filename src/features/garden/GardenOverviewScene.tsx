@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { OrbitControls } from "@react-three/drei";
+import { MOUSE } from "three";
 import { OVERVIEW_CAMERA } from "@/data/gardenScene";
 import { useGameStore } from "@/game/store/gameStore";
 import { SaturdayGardenModel } from "./SaturdayGardenModel";
@@ -9,6 +10,9 @@ import { GardenHotspots } from "./GardenHotspots";
 import { GardenWorldOverlays } from "./GardenWorldOverlays";
 import { GardenInteractionLayer } from "./GardenInteractionLayer";
 import { SceneRegistrationDebug } from "./SceneRegistrationDebug";
+
+/** Disable left-button orbit so R3F work gestures own LMB (G12). */
+const ORBIT_NO_LEFT = -1 as unknown as (typeof MOUSE)["ROTATE"];
 
 /**
  * Single continuous yard — always the same world + tool-scoped interaction (GATE-G).
@@ -63,7 +67,15 @@ export function GardenOverviewScene({
         minDistance={6}
         maxDistance={26}
         enablePan
+        enableRotate
+        enableZoom
         enabled={!dragging}
+        // G12: LMB = tool work · RMB = orbit · MMB = pan · wheel = zoom
+        mouseButtons={{
+          LEFT: ORBIT_NO_LEFT,
+          MIDDLE: MOUSE.PAN,
+          RIGHT: MOUSE.ROTATE,
+        }}
       />
     </>
   );

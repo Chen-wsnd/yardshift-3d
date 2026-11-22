@@ -128,6 +128,7 @@ export function GardenShell() {
             </Button>
             <Button
               variant="ghost"
+              data-testid="reset-garden"
               onClick={() => {
                 if (
                   window.confirm(
@@ -169,6 +170,23 @@ export function GardenShell() {
 
           <GlobalToolBar />
 
+          <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
+            <p className="max-w-[220px] rounded-md bg-white/85 px-2 py-1 text-[10px] text-stone-600 ring-1 ring-stone-200 sm:max-w-xs sm:text-xs">
+              {t("garden.cameraHint")}
+            </p>
+            <button
+              type="button"
+              className="pointer-events-auto rounded-md bg-white/90 px-2 py-1 text-xs text-stone-700 ring-1 ring-stone-300"
+              data-testid="reset-camera"
+              onClick={() => {
+                setFocusPoint(null);
+                setActiveGardenTask(null);
+              }}
+            >
+              ⟲ {t("garden.resetCamera")}
+            </button>
+          </div>
+
           {work.selectedToolId ? (
             <div className="pointer-events-none absolute bottom-36 left-3 z-10 max-w-xs rounded-md bg-white/90 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200 sm:bottom-40">
               {getToolKnowledge(work.selectedToolId)?.effectToWatch ??
@@ -179,8 +197,10 @@ export function GardenShell() {
             <div
               className="pointer-events-none absolute left-3 top-3 z-10 max-w-sm rounded-md bg-emerald-50/95 px-3 py-2 text-sm text-emerald-950 ring-1 ring-emerald-200"
               role="status"
+              data-testid="action-feedback"
+              data-event-id={event.id}
             >
-              {event.explanation}
+              {t(`event.${event.id}`, event.explanation)}
             </div>
           ) : null}
         </div>

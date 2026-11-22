@@ -72,21 +72,34 @@ function DebrisOverlays({ interactive }: { interactive: boolean }) {
 
 function HazardOverlays({ raycastOff }: { raycastOff?: boolean }) {
   const hazards = useGameStore((s) => s.work.garden?.hazards);
-  if (!hazards) return null;
+  const selectedToolId = useGameStore((s) => s.work.selectedToolId);
+  // When Hands is selected, HazardTaskStage owns visuals+hits — skip duplicate overlays
+  if (!hazards || selectedToolId == null) return null;
+  const noHit = raycastOff ? () => null : undefined;
   return (
     <group>
       {Object.values(hazards)
         .filter((h) => !h.cleared)
-        .map((h) => (
-          <mesh
-            key={h.id}
-            position={[h.x, 0.12, h.z]}
-            raycast={raycastOff ? () => null : undefined}
-          >
-            <dodecahedronGeometry args={[0.22, 0]} />
-            <meshStandardMaterial color="#7a7a7a" />
-          </mesh>
-        ))}
+        .map((h) => {
+          const wood =
+            h.id.includes("hardwood") ||
+            (h.blocks.includes("hedge-trimmer") &&
+              !h.blocks.includes("lawn-mower"));
+          return (
+            <mesh
+              key={h.id}
+              position={[h.x, 0.12, h.z]}
+              raycast={noHit}
+            >
+              {wood ? (
+                <boxGeometry args={[0.38, 0.28, 0.22]} />
+              ) : (
+                <dodecahedronGeometry args={[0.22, 0]} />
+              )}
+              <meshStandardMaterial color={wood ? "#5c3a1e" : "#8a9098"} />
+            </mesh>
+          );
+        })}
     </group>
   );
 }

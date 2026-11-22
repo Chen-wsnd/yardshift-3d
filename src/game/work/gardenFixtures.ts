@@ -104,7 +104,8 @@ export function createFreshV03GardenSnapshot(): WorkSnapshot {
     },
     activeJobId: GARDEN_JOB_ID,
     focusedZoneId: null,
-    selectedToolId: "manual-reel-mower",
+    // Hands / Inspect is the explicit teaching start (G19) — not a pre-armed mower
+    selectedToolId: null,
     ledger: [],
     damageKeys: [],
     lastEvents: [

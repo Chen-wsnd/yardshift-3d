@@ -26,7 +26,10 @@ import {
 } from "@/game/garden/reducer";
 import type { GardenEvent } from "@/game/garden/types";
 import { buildVisitSummary } from "@/game/learning/visitSummary";
-import { guardAndConsumeTool } from "@/game/rules/toolUseGuard";
+import {
+  applyManualWorkWear,
+  guardAndConsumeTool,
+} from "@/game/rules/toolUseGuard";
 import { applyWorkAction } from "@/game/work/engine";
 import { createFreshV02Snapshot, makeJobState } from "@/game/work/fixtures";
 import {
@@ -196,13 +199,14 @@ export const useGameStore = create<GameState>()(
         }
         const prev = work.selectedToolId;
         let garden = work.garden;
+        // Preview/browse tools is free (G19 / §5.1) — record selection without setup tax
         if (garden && toolId && toolId !== prev) {
           garden = applyGardenEvent(garden, {
             id: `tool-select:${toolId}:${garden.events.length}`,
             type: "TOOL_SELECTED",
             toolId,
             previousToolId: prev ?? undefined,
-            effort: 0.4,
+            effort: 0,
           });
         }
         set({ work: { ...work, selectedToolId: toolId, garden } });
@@ -371,36 +375,61 @@ export const useGameStore = create<GameState>()(
       },
 
       repairTool: (toolId) => {
-        const { work } = get();
+        const work = withGarden(get().work);
+        if (work.garden?.visitFinished) {
+          set({ work: sealedBlock(work)! });
+          return { ok: false, reason: "Visit sealed." };
+        }
         const tool = work.tools[toolId];
         if (!tool) return { ok: false, reason: "Unknown tool." };
+        if (tool.status !== "broken" && tool.condition > 5) {
+          return { ok: false, reason: "Tool does not need repair." };
+        }
         const cost = repairCost(tool);
         const ledgerId = `repair:${work.activeJobId ?? "none"}:${toolId}:${tool.condition}:${tool.status}`;
         if (work.ledger.some((l) => l.id === ledgerId)) {
           return { ok: false, reason: "Already repaired this incident." };
         }
-        let balance = work.balance;
-        let amount = cost;
-        if (balance < cost) {
-          // deferred capped charge — still repair
-          amount = Math.min(cost, 25);
-        } else {
-          balance -= cost;
+        // Learning mode: effort cost only — no hidden deferred debt (G11)
+        if (work.balance < cost) {
+          return {
+            ok: false,
+            reason: `Need ${cost} credits to repair (or use Try again).`,
+          };
         }
         const repaired = applyRepair(tool);
+        let garden = work.garden;
+        if (garden) {
+          garden = applyGardenEvent(garden, {
+            id: `tool-repair:${toolId}:${garden.events.length}`,
+            type: "TOOL_RECHARGED",
+            toolId,
+            effort: 1.2,
+          });
+        }
         set({
           work: {
             ...work,
-            balance,
+            balance: work.balance - cost,
             tools: { ...work.tools, [toolId]: repaired },
+            garden,
             ledger: [
               ...work.ledger,
               {
                 id: ledgerId,
                 kind: "repair",
                 jobId: work.activeJobId,
-                amount,
+                amount: cost,
                 label: `Repair ${toolId}`,
+              },
+            ],
+            lastEvents: [
+              {
+                id: "repair",
+                kind: "progress",
+                zoneId: "",
+                toolId,
+                explanation: "Tool repaired — condition restored; battery unchanged.",
               },
             ],
           },
@@ -409,14 +438,17 @@ export const useGameStore = create<GameState>()(
       },
 
       refillTool: (toolId) => {
-        const { work } = get();
+        const work = withGarden(get().work);
+        if (work.garden?.visitFinished) {
+          set({ work: sealedBlock(work)! });
+          return { ok: false, reason: "Visit sealed." };
+        }
         const tool = work.tools[toolId];
         const profile = EQUIPMENT_PROFILES.find((p) => p.id === toolId);
         if (!tool || !profile) return { ok: false, reason: "Unknown tool." };
         const cost = profile.ownedByDefault ? 0 : 10;
         if (work.balance < cost) return { ok: false, reason: "Need credits." };
         const ledgerId = `refill:${work.activeJobId ?? "x"}:${toolId}:${Date.now()}`;
-        // throttle: one refill ledger per tool per job for powered
         const existing = work.ledger.find(
           (l) =>
             l.kind === "refill" &&
@@ -424,7 +456,6 @@ export const useGameStore = create<GameState>()(
             l.label.includes(toolId),
         );
         if (existing && !profile.ownedByDefault) {
-          // allow refill but no double fee same job — still refill resource
           set({
             work: {
               ...work,
@@ -457,13 +488,36 @@ export const useGameStore = create<GameState>()(
       },
 
       clearJam: (toolId) => {
-        const { work } = get();
+        const work = withGarden(get().work);
+        if (work.garden?.visitFinished) {
+          set({ work: sealedBlock(work)! });
+          return;
+        }
         const tool = work.tools[toolId];
         if (!tool) return;
+        let garden = work.garden;
+        if (garden) {
+          garden = applyGardenEvent(garden, {
+            id: `clear-jam:${toolId}:${garden.events.length}`,
+            type: "TOOL_RECHARGED",
+            toolId,
+            effort: 0.6,
+          });
+        }
         set({
           work: {
             ...work,
             tools: { ...work.tools, [toolId]: applyClearJam(tool) },
+            garden,
+            lastEvents: [
+              {
+                id: "clear-jam",
+                kind: "progress",
+                zoneId: "",
+                toolId,
+                explanation: "Jam cleared — condition unchanged; check battery.",
+              },
+            ],
           },
         });
       },
@@ -599,6 +653,44 @@ export const useGameStore = create<GameState>()(
         }
         const h = work.garden.hazards[hazardId];
         if (!h || h.cleared) return;
+        // Must inspect before clearance (G04)
+        if (!work.garden.inspection[hazardId]?.observed) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "hazard-need-inspect",
+                  kind: "ineffective",
+                  zoneId: "hazard",
+                  toolId: "",
+                  explanation:
+                    "Inspect first — identify the material before trying to clear it.",
+                },
+              ],
+            },
+          });
+          return;
+        }
+        // Hardwood is not a hand-pickable stone (G04)
+        if (h.blocks.includes("hedge-trimmer") && !h.blocks.includes("lawn-mower")) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "hazard-hardwood",
+                  kind: "ineffective",
+                  zoneId: "hazard",
+                  toolId: "",
+                  explanation:
+                    "Thick entangled wood cannot be lifted by hand — mark it and keep powered trimmers away until you have a suitable cutting tool.",
+                },
+              ],
+            },
+          });
+          return;
+        }
         set({
           work: {
             ...work,
@@ -614,7 +706,7 @@ export const useGameStore = create<GameState>()(
                 kind: "progress",
                 zoneId: "",
                 toolId: "",
-                explanation: `Removed: ${h.label}. That area is safer to work.`,
+                explanation: `Moved aside: ${h.label}. That patch is safer for blades.`,
               },
             ],
           },
@@ -854,6 +946,42 @@ export const useGameStore = create<GameState>()(
           get().damageFlower(plantId);
           return;
         }
+        // G08: already top-cut with roots left — no fake re-work cost
+        if (p.topCut && !p.rootRemoved) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "top-already",
+                  kind: "ineffective",
+                  zoneId: "flowerbed",
+                  toolId,
+                  explanation:
+                    "Tops already cut — roots remain. Use the hand weeder; no extra wear.",
+                },
+              ],
+            },
+          });
+          return;
+        }
+        if (p.rootRemoved) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "top-gone",
+                  kind: "ineffective",
+                  zoneId: "flowerbed",
+                  toolId,
+                  explanation: "That weed is already gone.",
+                },
+              ],
+            },
+          });
+          return;
+        }
         const tool = work.tools[toolId];
         if (!tool) return;
         const guard = guardAndConsumeTool(tool, toolId, {
@@ -945,6 +1073,7 @@ export const useGameStore = create<GameState>()(
           set({ work: blocked });
           return;
         }
+        const beforeIds = work.garden.appliedEventIds.length;
         let garden = gatherNearbyDebris(
           work.garden,
           x + dx * 0.4,
@@ -952,7 +1081,7 @@ export const useGameStore = create<GameState>()(
           1.1,
           `rake:${work.garden.events.length}`,
         );
-        // Also nudge nearby scattered leaves along rake direction
+        let nudged = 0;
         for (const d of Object.values(garden.debris)) {
           if (d.state !== "scattered") continue;
           if ((d.x - x) ** 2 + (d.z - z) ** 2 > 1.4 * 1.4) continue;
@@ -963,10 +1092,33 @@ export const useGameStore = create<GameState>()(
             x: d.x + dx * 0.5,
             z: d.z + dz * 0.5,
           });
+          nudged++;
         }
+        const changed = garden.appliedEventIds.length > beforeIds || nudged > 0;
+        if (!changed) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "rake-miss",
+                  kind: "ineffective",
+                  zoneId: "debris",
+                  toolId: "rake",
+                  explanation: "Nothing to rake here — move closer to scattered debris.",
+                },
+              ],
+            },
+          });
+          return;
+        }
+        const rakeTool = work.tools.rake;
         set({
           work: {
             ...work,
+            tools: rakeTool
+              ? { ...work.tools, rake: applyManualWorkWear(rakeTool, "rake") }
+              : work.tools,
             garden,
             lastEvents: [
               {
@@ -991,6 +1143,40 @@ export const useGameStore = create<GameState>()(
         }
         const tool = work.tools["leaf-blower"];
         if (!tool) return;
+        // Probe moves first — no drain on empty clicks (G10)
+        const len = Math.hypot(dirX, dirZ) || 1;
+        const nx = dirX / len;
+        const nz = dirZ / len;
+        let probeMoved = 0;
+        for (const d of Object.values(work.garden.debris)) {
+          if (d.state === "bagged") continue;
+          const dist2 = (d.x - x) ** 2 + (d.z - z) ** 2;
+          if (dist2 > 2.2 * 2.2) continue;
+          const toDx = d.x - x;
+          const toDz = d.z - z;
+          const toLen = Math.hypot(toDx, toDz) || 1;
+          const dot = (toDx / toLen) * nx + (toDz / toLen) * nz;
+          if (dot < 0.15 && dist2 > 0.4) continue;
+          probeMoved++;
+        }
+        if (probeMoved === 0) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "blow-miss",
+                  kind: "ineffective",
+                  zoneId: "debris",
+                  toolId: "leaf-blower",
+                  explanation:
+                    "Nothing in the blower cone — aim toward debris (no battery used).",
+                },
+              ],
+            },
+          });
+          return;
+        }
         const guard = guardAndConsumeTool(tool, "leaf-blower", {
           drain: true,
           wear: true,
@@ -1012,9 +1198,6 @@ export const useGameStore = create<GameState>()(
           });
           return;
         }
-        const len = Math.hypot(dirX, dirZ) || 1;
-        const nx = dirX / len;
-        const nz = dirZ / len;
         let garden = work.garden;
         let moved = 0;
         for (const d of Object.values(garden.debris)) {
@@ -1058,16 +1241,15 @@ export const useGameStore = create<GameState>()(
             lastEvents: [
               {
                 id: "blow",
-                kind: moved ? "progress" : "ineffective",
+                kind: "progress",
                 zoneId: "debris",
                 toolId: "leaf-blower",
-                explanation: moved
-                  ? "Blower moved debris in the aim direction."
-                  : "Nothing in the blower cone.",
+                explanation: "Blower moved debris in the aim direction.",
               },
             ],
           },
         });
+        void moved;
       },
 
       bagNearbyPiles: (x, z) => {
@@ -1095,16 +1277,21 @@ export const useGameStore = create<GameState>()(
                   kind: "ineffective",
                   zoneId: "debris",
                   toolId: "bag",
-                  explanation: "No gathered pile nearby to bag.",
+                  explanation:
+                    "No gathered pile nearby — rake first, then stand next to the pile.",
                 },
               ],
             },
           });
           return;
         }
+        const bagTool = work.tools.bag;
         set({
           work: {
             ...work,
+            tools: bagTool
+              ? { ...work.tools, bag: applyManualWorkWear(bagTool, "bag") }
+              : work.tools,
             garden: domain,
             lastEvents: [
               {

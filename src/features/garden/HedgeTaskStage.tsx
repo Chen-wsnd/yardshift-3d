@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { evaluateToolIntent } from "@/game/interaction/evaluateToolIntent";
+import { useHoverIntent } from "@/game/interaction/hoverIntentStore";
 import { useGameStore } from "@/game/store/gameStore";
 import { GardenToolView } from "./GardenToolView";
 
@@ -10,8 +12,14 @@ export function HedgeTaskStage({
   onDragChange?: (d: boolean) => void;
 }) {
   const clusters = useGameStore((s) => s.work.garden?.hedgeClusters);
+  const garden = useGameStore((s) => s.work.garden);
   const selectedToolId = useGameStore((s) => s.work.selectedToolId);
+  const tool = useGameStore((s) =>
+    s.work.selectedToolId ? s.work.tools[s.work.selectedToolId] : null,
+  );
   const cutHedgeCluster = useGameStore((s) => s.cutHedgeCluster);
+  const setHover = useHoverIntent((s) => s.setHover);
+  const clearHover = useHoverIntent((s) => s.clearHover);
   const dragging = useRef(false);
   const hit = useRef<Set<string>>(new Set());
   const [cursor, setCursor] = useState<[number, number, number]>([6.4, 0.8, 1]);
@@ -54,6 +62,16 @@ export function HedgeTaskStage({
           stroke(e.point.x, e.point.z);
         }}
         onPointerMove={(e) => {
+          const intent = evaluateToolIntent(
+            selectedToolId,
+            { kind: "hedge", x: e.point.x, z: e.point.z },
+            { garden, tool },
+          );
+          if (intent.level === "risk" || intent.level === "unavailable") {
+            setHover({ kind: "hedge", id: "hedge-near-hazard" }, intent);
+          } else if (!dragging.current) {
+            clearHover();
+          }
           if (!dragging.current) return;
           e.stopPropagation();
           const prev = cursor;
@@ -71,8 +89,8 @@ export function HedgeTaskStage({
           onDragChange?.(false);
         }}
         onPointerLeave={(e) => {
+          clearHover();
           if (!dragging.current) return;
-          // Keep capture while dragging; only end if capture lost
           if (!(e.target as HTMLElement).hasPointerCapture?.(e.pointerId)) {
             dragging.current = false;
             onDragChange?.(false);

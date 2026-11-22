@@ -56,7 +56,10 @@ export function GardenCanvas({
   onFocusArea?: (areaId: string) => void;
 }) {
   return (
-    <div className="absolute inset-0 h-full w-full bg-sky-200">
+    <div
+      className="absolute inset-0 h-full w-full bg-sky-200"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <Canvas
         key="garden"
         shadows

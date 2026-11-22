@@ -22,7 +22,7 @@
 | S4.5 | PARTIAL | Chrome + toolbar bilingual; event explanations still mostly en (fallback OK) |
 | S5 | BROWSER_PASS sample | Tool bar without hotspot; shears→rake same yard; zh toolbar; canvas stable |
 | S6 | DONE | Owner pack tool-first; checklist; README |
-| S7 | IN PROGRESS | typecheck/lint/test/build; push feature only |
+| S7 | DONE | SHA `0cb717a`; pushed feature only; no main/deploy |
 
 ### GATE status
 
@@ -32,7 +32,7 @@
 | B | PARTIAL — store+browser continuous route; more pointer E2E residual |
 | C | PASS — owner pack updated |
 | D | PASS — A/B quality gate; HUMAN_NOT_TESTED |
-| E | PASS pending push |
+| E | PASS — pushed `feature/v06-final-playable-closure` @ `0cb717a` |
 | F | PARTIAL — toolbar/nav bilingual; deep copy/events backlog |
 | G | PASS (architecture + TB01/03/04/07/08/11/12/14/17 sample) |
 

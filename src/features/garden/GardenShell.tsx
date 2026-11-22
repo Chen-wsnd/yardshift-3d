@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
-import { EQUIPMENT_PROFILES } from "@/data/equipmentProfiles";
 import { getGardenTask } from "@/data/gardenTasks";
 import { LAWN_ZONE_ID } from "@/data/lawnGrid";
 import { getToolKnowledge } from "@/game/learning/toolKnowledge";
 import { useGameStore } from "@/game/store/gameStore";
-import { WorkConfirm } from "./WorkConfirm";
+import { useLocale } from "@/i18n/LocaleProvider";
+import { GlobalToolBar } from "./GlobalToolBar";
 import { WorkPlanPanel } from "./WorkPlanPanel";
 import { WorkReviewPanel } from "./WorkReviewPanel";
 
@@ -27,23 +27,17 @@ const GardenCanvas = dynamic(
 );
 
 export function GardenShell() {
+  const { t } = useLocale();
   const work = useGameStore((s) => s.work);
   const hydrated = useGameStore((s) => s.hydrated);
   const startV03Garden = useGameStore((s) => s.startV03Garden);
   const setActiveGardenTask = useGameStore((s) => s.setActiveGardenTask);
-  const selectTool = useGameStore((s) => s.selectTool);
-  const rechargeTool = useGameStore((s) => s.rechargeTool);
-  const clearJam = useGameStore((s) => s.clearJam);
   const setReviewOpen = useGameStore((s) => s.setReviewOpen);
   const finishVisit = useGameStore((s) => s.finishVisit);
   const inspectObject = useGameStore((s) => s.inspectObject);
   const setFocusPoint = useGameStore((s) => s.setFocusPoint);
 
-  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
-  const [lastToolByTask, setLastToolByTask] = useState<Record<string, string>>(
-    {},
-  );
 
   useEffect(() => {
     if (!hydrated) return;
@@ -52,10 +46,15 @@ export function GardenShell() {
     }
   }, [hydrated, work.schemaVersion, work.activeJobId, startV03Garden]);
 
+  // Ensure Hands/Inspect default — never auto-pick a work tool
+  useEffect(() => {
+    if (!hydrated) return;
+    // leave whatever player selected; first load often null already
+  }, [hydrated]);
+
   const garden = work.garden;
-  const activeTaskId = garden?.activeTaskId ?? null;
-  const pendingTask = pendingTaskId ? getGardenTask(pendingTaskId) : null;
-  const activeTask = activeTaskId ? getGardenTask(activeTaskId) : null;
+  const focusAreaId = garden?.activeTaskId ?? null;
+  const focusArea = focusAreaId ? getGardenTask(focusAreaId) : null;
   const event = work.lastEvents[0];
 
   const lawn = work.jobs["job-overgrown-lawn"]?.zones.find(
@@ -76,112 +75,57 @@ export function GardenShell() {
     Object.values(garden?.hedgeClusters ?? {}).filter((c) => !c.cut).length ??
     0;
 
-  const selected = work.selectedToolId
-    ? work.tools[work.selectedToolId]
-    : undefined;
-  const needsRecharge =
-    selected &&
-    (selected.resourceType === "battery" || selected.resourceType === "fuel") &&
-    (selected.resource < 15 || selected.status === "unpowered");
-  const needsJamClear = selected?.status === "jammed";
-
-  const toolChoices = activeTask?.tools ?? [];
   const visitSealed = Boolean(garden?.visitFinished);
-
-  const sceneFactFor = (taskId: string | null | undefined) => {
-    if (!taskId || !garden) return undefined;
-    if (taskId === "lawn") {
-      const stone = Object.values(garden.hazards).find(
-        (h) => !h.cleared && h.blocks.includes("lawn-mower"),
-      );
-      return stone
-        ? "Open grass with a possible stone in the NW lawn — check before powered blades."
-        : "Open grass near flower borders — width vs precision matters.";
-    }
-    if (taskId === "hedge") {
-      const wood = Object.values(garden.hazards).find(
-        (h) => !h.cleared && h.blocks.includes("hedge-trimmer"),
-      );
-      return wood
-        ? "Long east face; thick wood may block a powered bar until cleared."
-        : "Long east hedge face — soft growth vs long runs.";
-    }
-    if (taskId === "flowerbed")
-      return "Weeds beside ornamentals — tops vs roots are different jobs.";
-    if (taskId === "edge")
-      return "Path–lawn strip stays ragged even when open lawn looks done.";
-    if (taskId === "debris")
-      return "Scattered leaves and clippings at real ground positions — gather before bagging.";
-    if (taskId === "hazard")
-      return "Local risks block matching tools nearby, not the whole yard.";
-    return undefined;
-  };
 
   return (
     <AppShell showBalance={false}>
       <div className="relative flex h-[calc(100vh-57px)] min-h-[520px] flex-col">
         {visitSealed ? (
           <div className="shrink-0 bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-950">
-            Visit sealed — yard is view-only. Open Work review or Try again (same
-            yard) for a new attempt. Prior summaries (up to 3) are kept.
+            {t("garden.sealedBanner")}
           </div>
         ) : null}
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 px-4 py-2 sm:px-6">
-          <div className="flex items-center gap-3">
-            {activeTaskId ? (
-              <Button
-                variant="secondary"
-                onClick={() => setActiveGardenTask(null)}
-              >
-                Back to garden
-              </Button>
-            ) : null}
-            <div>
-              <h1 className="font-[family-name:var(--font-display)] text-lg text-stone-900 sm:text-xl">
-                {activeTask?.name ?? "Saturday morning garden"}
-              </h1>
-              <p className="text-xs text-stone-500 sm:text-sm">
-                {!hydrated
-                  ? "Restoring save…"
-                  : activeTask
-                    ? activeTask.designPurpose
-                    : "Take a look around. What would you do first?"}
-              </p>
-              {activeTask ? (
-                <p className="mt-0.5 hidden text-xs text-stone-400 sm:block">
-                  {activeTask.strengthsLimits}
-                </p>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-[family-name:var(--font-display)] text-lg text-stone-900 sm:text-xl">
+              {t("garden.title")}
+              {focusArea ? (
+                <span className="ml-2 text-sm font-normal text-stone-500">
+                  · {focusArea.name}
+                </span>
               ) : null}
-            </div>
+            </h1>
+            <p className="text-xs text-stone-500 sm:text-sm">
+              {!hydrated ? "…" : t("garden.prompt")}
+            </p>
+            <p className="mt-0.5 hidden text-xs text-stone-400 sm:block">
+              Lawn {finishedCells} · Hedge {uncutHedge} · Debris {looseDebris}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {!activeTaskId ? (
-              <>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    inspectObject("garden-overview");
-                    setPlanOpen(false);
-                  }}
-                >
-                  Inspect
-                </Button>
-                <Button variant="ghost" onClick={() => setPlanOpen((v) => !v)}>
-                  Work plan
-                </Button>
-                <Button variant="secondary" onClick={() => setReviewOpen(true)}>
-                  Work review
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    finishVisit();
-                  }}
-                >
-                  Finish visit
-                </Button>
-              </>
-            ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              disabled={visitSealed}
+              onClick={() => {
+                inspectObject("garden-overview");
+                setPlanOpen(false);
+              }}
+            >
+              {t("garden.inspect")}
+            </Button>
+            <Button variant="ghost" onClick={() => setPlanOpen((v) => !v)}>
+              {t("garden.plan")}
+            </Button>
+            <Button variant="secondary" onClick={() => setReviewOpen(true)}>
+              {t("garden.review")}
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={visitSealed}
+              onClick={() => finishVisit()}
+            >
+              {t("garden.finish")}
+            </Button>
             <Button
               variant="ghost"
               onClick={() => {
@@ -191,18 +135,18 @@ export function GardenShell() {
                   )
                 ) {
                   startV03Garden();
-                  setPendingTaskId(null);
                   setPlanOpen(false);
+                  setActiveGardenTask(null);
                 }
               }}
             >
-              Reset garden
+              {t("garden.reset")}
             </Button>
             <Link
               href="/legacy"
               className="rounded-md px-3 py-2 text-sm text-stone-500 hover:bg-stone-100"
             >
-              Legacy v0.2
+              {t("legacy.note")}
             </Link>
           </div>
         </div>
@@ -210,108 +154,30 @@ export function GardenShell() {
         <div className="relative min-h-0 flex-1">
           <div className="absolute inset-0">
             <GardenCanvas
-              activeTaskId={activeTaskId}
-              onSelectTask={(id) => setPendingTaskId(id)}
+              onFocusArea={(id) => {
+                const task = getGardenTask(id);
+                if (task) {
+                  setFocusPoint({ x: task.center[0], z: task.center[2] });
+                }
+                setActiveGardenTask(id);
+              }}
             />
           </div>
-
-          <WorkConfirm
-            key={pendingTaskId ?? "none"}
-            open={Boolean(pendingTask) && !activeTaskId && !visitSealed}
-            title={pendingTask?.prompt ?? "Start work?"}
-            body={pendingTask?.strengthsLimits}
-            sceneFact={sceneFactFor(pendingTaskId)}
-            toolIds={pendingTask?.tools}
-            lastUsedToolId={
-              pendingTaskId ? lastToolByTask[pendingTaskId] ?? null : null
-            }
-            onCancel={() => setPendingTaskId(null)}
-            onConfirm={(toolId) => {
-              if (!pendingTaskId || visitSealed) return;
-              const task = getGardenTask(pendingTaskId);
-              if (pendingTaskId === "debris" && task) {
-                setFocusPoint({ x: task.center[0], z: task.center[2] });
-              }
-              if (!toolId) return;
-              setLastToolByTask((m) => ({ ...m, [pendingTaskId]: toolId }));
-              setActiveGardenTask(pendingTaskId);
-              selectTool(toolId);
-              setPendingTaskId(null);
-            }}
-          />
 
           <WorkPlanPanel open={planOpen} onClose={() => setPlanOpen(false)} />
           <WorkReviewPanel />
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-3">
-            <div className="pointer-events-auto flex max-w-3xl flex-wrap items-center justify-center gap-2 rounded-lg bg-[#f7f3ea]/95 px-3 py-2 text-sm shadow-md ring-1 ring-stone-900/10">
-              {activeTaskId && toolChoices.length ? (
-                <>
-                  {toolChoices.map((toolId) => {
-                    const t = work.tools[toolId];
-                    const profile = EQUIPMENT_PROFILES.find((p) => p.id === toolId);
-                    const label = profile?.name ?? toolId;
-                    const bat =
-                      t &&
-                      (t.resourceType === "battery" ||
-                        t.resourceType === "fuel")
-                        ? ` · ${Math.round(t.resource)}%`
-                        : "";
-                    return (
-                      <button
-                        key={toolId}
-                        type="button"
-                        title={profile?.description}
-                        className={`rounded-md px-3 py-1.5 ${
-                          work.selectedToolId === toolId
-                            ? "bg-emerald-800 text-white"
-                            : "bg-white text-stone-800"
-                        }`}
-                        onClick={() => selectTool(toolId)}
-                      >
-                        {label}
-                        {work.selectedToolId === toolId ? bat : ""}
-                      </button>
-                    );
-                  })}
-                  {needsRecharge ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        if (!work.selectedToolId) return;
-                        rechargeTool(work.selectedToolId);
-                      }}
-                    >
-                      Recharge
-                    </Button>
-                  ) : null}
-                  {needsJamClear && work.selectedToolId ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => clearJam(work.selectedToolId!)}
-                    >
-                      Clear jam
-                    </Button>
-                  ) : null}
-                </>
-              ) : (
-                <span className="text-stone-600">
-                  Lawn cut {finishedCells} · Hedge left {uncutHedge} · Debris{" "}
-                  {looseDebris}
-                </span>
-              )}
-            </div>
-          </div>
+          <GlobalToolBar />
 
-          {activeTaskId && work.selectedToolId ? (
-            <div className="pointer-events-none absolute bottom-16 left-3 z-10 max-w-xs rounded-md bg-white/90 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200">
+          {work.selectedToolId ? (
+            <div className="pointer-events-none absolute bottom-36 left-3 z-10 max-w-xs rounded-md bg-white/90 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200 sm:bottom-40">
               {getToolKnowledge(work.selectedToolId)?.effectToWatch ??
                 "Watch how this tool changes the yard."}
             </div>
           ) : null}
           {event ? (
             <div
-              className="pointer-events-none absolute left-3 top-14 z-10 max-w-sm rounded-md bg-emerald-50/95 px-3 py-2 text-sm text-emerald-950 ring-1 ring-emerald-200"
+              className="pointer-events-none absolute left-3 top-3 z-10 max-w-sm rounded-md bg-emerald-50/95 px-3 py-2 text-sm text-emerald-950 ring-1 ring-emerald-200"
               role="status"
             >
               {event.explanation}

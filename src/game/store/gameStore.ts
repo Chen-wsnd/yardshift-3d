@@ -168,6 +168,7 @@ export const useGameStore = create<GameState>()(
       setActiveGardenTask: (taskId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        // GATE-G: activeTaskId is camera guide only — allowed even when sealed
         set({
           work: {
             ...work,
@@ -184,6 +185,15 @@ export const useGameStore = create<GameState>()(
 
       selectTool: (toolId) => {
         const work = withGarden(get().work);
+        // Sealed: no tool-select events or inventory side effects
+        if (work.garden?.visitFinished) {
+          if (toolId == null) {
+            set({ work: { ...work, selectedToolId: null } });
+          } else {
+            set({ work: sealedBlock(work)! });
+          }
+          return;
+        }
         const prev = work.selectedToolId;
         let garden = work.garden;
         if (garden && toolId && toolId !== prev) {
@@ -500,6 +510,11 @@ export const useGameStore = create<GameState>()(
       dispatchGarden: (event) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         set({
           work: {
             ...work,
@@ -511,6 +526,11 @@ export const useGameStore = create<GameState>()(
       inspectObject: (objectId) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         // Idempotent: re-inspecting the same object does not stack setup effort
         if (work.garden.inspection[objectId]?.observed) {
           set({
@@ -612,6 +632,54 @@ export const useGameStore = create<GameState>()(
         const powered = toolId === "hedge-trimmer";
         const tool = work.tools[toolId];
         if (!tool) return;
+        const cluster = work.garden.hedgeClusters[clusterId];
+        if (!cluster) return;
+        // Effect-first: no free consume when nothing will change (P1-03)
+        const intentionalOvercut = Boolean(overcut) && cluster.cut && !cluster.overcut;
+        if (cluster.cut && !intentionalOvercut) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "hedge-noop",
+                  kind: "ineffective",
+                  zoneId: "hedge",
+                  toolId,
+                  explanation: cluster.overcut
+                    ? "That notch is already there — further passes do not change it."
+                    : "Cluster already trimmed — a second intentional pass would overcut.",
+                },
+              ],
+            },
+          });
+          return;
+        }
+        // Block powered trimmer near uncleared hardwood hazard (before consume)
+        const hazardBlocks = Object.values(work.garden.hazards).some(
+          (h) =>
+            !h.cleared &&
+            h.blocks.includes(toolId) &&
+            Math.hypot(h.x - cluster.x, h.z - cluster.z) < 1.2,
+        );
+        if (hazardBlocks) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "blocked",
+                  kind: "ineffective",
+                  zoneId: "hedge",
+                  toolId,
+                  explanation:
+                    "Hard entangled wood blocks the powered trimmer here — inspect and clear it first.",
+                },
+              ],
+            },
+          });
+          return;
+        }
         const guard = guardAndConsumeTool(tool, toolId, {
           drain: powered,
           wear: true,
@@ -633,49 +701,25 @@ export const useGameStore = create<GameState>()(
           });
           return;
         }
-        // Block powered trimmer near uncleared hardwood hazard
-        const hazardBlocks = Object.values(work.garden.hazards).some(
-          (h) =>
-            !h.cleared &&
-            h.blocks.includes(toolId) &&
-            Math.hypot(
-              h.x - (work.garden!.hedgeClusters[clusterId]?.x ?? 99),
-              h.z - (work.garden!.hedgeClusters[clusterId]?.z ?? 99),
-            ) < 1.2,
-        );
-        if (hazardBlocks) {
-          set({
-            work: {
-              ...work,
-              tools: { ...work.tools, [toolId]: guard.tool },
-              lastEvents: [
-                {
-                  id: "blocked",
-                  kind: "ineffective",
-                  zoneId: "hedge",
-                  toolId,
-                  explanation:
-                    "Hard entangled wood blocks the powered trimmer here — inspect and clear it first.",
-                },
-              ],
-            },
-          });
-          return;
-        }
-        const cluster = work.garden.hedgeClusters[clusterId];
+        const eventId = intentionalOvercut
+          ? `hedge-overcut:${clusterId}:${toolId}`
+          : `hedge-cut:${clusterId}:${toolId}`;
         set({
           work: {
             ...work,
             tools: { ...work.tools, [toolId]: guard.tool },
             garden: applyGardenEvent(work.garden, {
-              id: `hedge-cut:${clusterId}:${toolId}`,
+              id: eventId,
               type: "HEDGE_CLUSTER_CUT",
               clusterId,
-              overcut: Boolean(overcut),
+              overcut: intentionalOvercut,
               effort: powered ? 0.35 : 0.55,
-              worldFootprint: cluster
-                ? { x: cluster.x, z: cluster.z, radius: 1.0, areaId: "hedge" }
-                : undefined,
+              worldFootprint: {
+                x: cluster.x,
+                z: cluster.z,
+                radius: 1.0,
+                areaId: "hedge",
+              },
             }),
             lastEvents: [
               {
@@ -683,8 +727,8 @@ export const useGameStore = create<GameState>()(
                 kind: "progress",
                 zoneId: "hedge",
                 toolId,
-                explanation: overcut
-                  ? "Overcut left a notch in the hedge. Clippings fell below."
+                explanation: intentionalOvercut
+                  ? "Overcut left a lasting notch. Clippings already fell on the first cut."
                   : "Hedge cluster trimmed. Clippings landed on the ground.",
               },
             ],
@@ -1078,6 +1122,11 @@ export const useGameStore = create<GameState>()(
       revisePlan: (orderedTaskIds) => {
         const work = withGarden(get().work);
         if (!work.garden) return;
+        const blocked = sealedBlock(work);
+        if (blocked) {
+          set({ work: blocked });
+          return;
+        }
         set({
           work: {
             ...work,
@@ -1141,6 +1190,35 @@ export const useGameStore = create<GameState>()(
         const tool = work.tools[toolId];
         if (!tool) return;
         const powered = toolId === "string-trimmer";
+        const radius = powered ? 0.55 : 0.35;
+        const workPer = powered ? 28 : 22;
+        // Probe hits first — do not drain on empty pointer samples (P1-09)
+        let probe = work.garden.edgeSegments ?? {};
+        const probeHit = new Set<string>();
+        const pts = samples.length ? samples : [{ x, z }];
+        for (const p of pts) {
+          if (p.z > -2.6 || p.z < -4.3) continue;
+          const res = applyEdgeStroke(probe, p.x, p.z, radius, workPer);
+          probe = res.segments;
+          res.hitIds.forEach((id) => probeHit.add(id));
+        }
+        if (probeHit.size === 0) {
+          set({
+            work: {
+              ...work,
+              lastEvents: [
+                {
+                  id: "edge-miss",
+                  kind: "ineffective",
+                  zoneId: "edge",
+                  toolId,
+                  explanation: "Stay on the path–lawn edge strip.",
+                },
+              ],
+            },
+          });
+          return;
+        }
         const guard = guardAndConsumeTool(tool, toolId, {
           drain: powered,
           wear: true,
@@ -1162,43 +1240,14 @@ export const useGameStore = create<GameState>()(
           });
           return;
         }
-        const radius = powered ? 0.55 : 0.35;
-        const workPer = powered ? 28 : 22;
-        let segments = work.garden.edgeSegments ?? {};
-        const hit = new Set<string>();
-        const pts = samples.length ? samples : [{ x, z }];
-        for (const p of pts) {
-          if (p.z > -2.6 || p.z < -4.3) continue;
-          const res = applyEdgeStroke(segments, p.x, p.z, radius, workPer);
-          segments = res.segments;
-          res.hitIds.forEach((id) => hit.add(id));
-        }
-        if (hit.size === 0) {
-          set({
-            work: {
-              ...work,
-              tools: { ...work.tools, [toolId]: guard.tool },
-              lastEvents: [
-                {
-                  id: "edge-miss",
-                  kind: "ineffective",
-                  zoneId: "edge",
-                  toolId,
-                  explanation: "Stay on the path–lawn edge strip.",
-                },
-              ],
-            },
-          });
-          return;
-        }
         let garden = {
           ...work.garden,
-          edgeSegments: segments,
+          edgeSegments: probe,
         };
         garden = applyGardenEvent(garden, {
           id: `edge:${toolId}:${garden.events.length}`,
           type: "EDGE_WORKED",
-          segmentIds: [...hit],
+          segmentIds: [...probeHit],
           toolId,
           effort: powered ? 0.25 : 0.4,
           worldFootprint: { x, z, radius, areaId: "edge" },

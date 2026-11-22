@@ -1,11 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { BalanceDisplay } from "@/features/economy/BalanceDisplay";
+import { LanguageToggle, useLocale } from "@/i18n/LocaleProvider";
 
 interface AppHeaderProps {
   showBalance?: boolean;
 }
 
 export function AppHeader({ showBalance = true }: AppHeaderProps) {
+  const { t } = useLocale();
   return (
     <header className="flex items-center justify-between gap-4 border-b border-stone-200/80 bg-white/80 px-4 py-3 backdrop-blur-sm sm:px-6">
       <div className="flex items-center gap-6">
@@ -16,14 +20,17 @@ export function AppHeader({ showBalance = true }: AppHeaderProps) {
         </Link>
         <nav className="flex gap-3 text-sm text-stone-600">
           <Link href="/" className="hover:text-emerald-800">
-            Task Board
+            {t("nav.taskBoard")}
           </Link>
           <Link href="/yard" className="hover:text-emerald-800">
-            Yard
+            {t("nav.yard")}
           </Link>
         </nav>
       </div>
-      {showBalance ? <BalanceDisplay /> : null}
+      <div className="flex items-center gap-3">
+        <LanguageToggle />
+        {showBalance ? <BalanceDisplay /> : null}
+      </div>
     </header>
   );
 }

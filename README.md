@@ -2,7 +2,7 @@
 
 Browser-based 3D gardening simulation. One continuous home garden where observation, tool choice, cross-task debris, and work review teach how experienced gardeners organise a job.
 
-**Current playtest path:** V06 full garden experience (`feature/v06-yardshift-full-experience`).
+**Current playtest path:** V06 final playable closure (`feature/v06-final-playable-closure`) — **global Tool Bar + one continuous yard** (GATE-G). Owner pack: `docs/V06_OWNER_PLAYTEST.md`.
 
 ## Stack
 
@@ -29,22 +29,24 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Optional QA overlay: `/?debugPlacement=1`
 
-## Play loop (V06)
+## Play loop (V06 · tool-first)
 
-1. **Overview (`/`)** — Saturday morning back garden; discoverable hotspots (lawn, hedge, debris, flowerbed; inspect reveals edge/hazards).
-2. **Optional** Inspect / Work plan / Work review — plan is not a forced order.
-3. **Tasks** — reel vs powered mowing; shears vs hedge trimmer; rake / blower / bag; root pull vs top cut; path edge; hazard clear.
-4. **Causality** — hedge clippings spawn on the ground; cleaning then trimming creates visible rework.
-5. **Recharge** — empty battery restores via free garden recharge (not a repair).
-6. Persist key `yardshift-v03` (legacy `/legacy` keeps `yardshift-v02`).
+1. **Yard (`/`)** — one continuous Saturday garden; bottom **Tools** bar always available (Hands / Inspect + all work tools).
+2. Select a tool, then drag/click matching targets — **no need to enter a TaskStage first**. Area labels only move the camera.
+3. Switch tools in place (e.g. shears → rake under the hedge) without leaving the yard.
+4. **Causality** — clippings spawn; clean-then-trim creates rework; sealed visit is read-only.
+5. **Recharge / Clear jam / Repair** — distinct recoveries on the tool bar.
+6. Language: **English / 中文** (key `yardshift-locale`). Persist key `yardshift-v03` (untouched by locale).
 
 Specs: `docs/YARDSHIFT_V06_SINGLE_MASTER_CURSOR_SPEC.md` · atlas: `docs/YARDSHIFT_V06_IMPLEMENTATION_ATLAS_AND_RECOVERY_ADDENDUM.md` · log: `docs/V06_EXECUTION_LOG.md`
 
 ## Known limits (non-blocking)
 
 - Debris / some tools still use readable proxy meshes in-stage (kit GLBs are in-repo).
-- Edge trim reuses south lawn cells near the measured path.
+- Path edge uses **independent** edge segments (not lawn cells).
 - Hazard stone is an overlay (starter GLB has no rock node).
+- Touch / mobile pointer: limited support this closure; desktop mouse is the verified path.
+- Human learning outcome remains `HUMAN_NOT_TESTED` until a person runs the Owner pack.
 
 ## Assets & Credits
 

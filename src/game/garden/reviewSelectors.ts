@@ -15,7 +15,13 @@ export interface ReviewSummary {
   qualityNotes: string[];
   reworkNotes: string[];
   completionNotes: string[];
-  learningAdvice: { text: string; eventId?: string; areaId?: string }[];
+  learningAdvice: {
+    text: string;
+    eventId?: string;
+    areaId?: string;
+    sourceType?: "event" | "current-state";
+    entityId?: string;
+  }[];
   unresolvedHazards: number;
   uncutHedge: number;
   looseDebris: number;

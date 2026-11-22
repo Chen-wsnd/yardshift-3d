@@ -31,8 +31,9 @@ export function WorkConfirm({
   const [chosen, setChosen] = useState<string | null>(null);
   if (!open) return null;
 
+  const handsOnly = ids.length === 0;
   const knowledge = chosen ? getToolKnowledge(chosen) : undefined;
-  const canStart = ids.length === 0 || chosen != null;
+  const canStart = handsOnly || chosen != null;
 
   return (
     <div
@@ -129,10 +130,18 @@ export function WorkConfirm({
           </Button>
           <Button
             disabled={!canStart}
-            onClick={() => onConfirm(chosen)}
-            title={canStart ? undefined : "Pick a tool first"}
+            onClick={() => onConfirm(handsOnly ? null : chosen)}
+            title={
+              canStart
+                ? undefined
+                : "Pick a tool first"
+            }
           >
-            {canStart ? "Start with this tool" : "Pick a tool first"}
+            {handsOnly
+              ? "Inspect area"
+              : canStart
+                ? "Start with this tool"
+                : "Pick a tool first"}
           </Button>
         </div>
       </div>

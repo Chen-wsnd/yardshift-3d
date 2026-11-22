@@ -3,8 +3,11 @@ import { countPotentialRedirty } from "@/game/garden/spatialRework";
 
 export interface LearningAdvice {
   text: string;
+  /** Only set when a real sealed/history event backs the tip (P1-05). */
   eventId?: string;
   areaId?: string;
+  sourceType?: "event" | "current-state";
+  entityId?: string;
 }
 
 export interface AdviceContext {
@@ -20,6 +23,7 @@ export function buildLearningAdvice(
   ctx: AdviceContext,
 ): LearningAdvice[] {
   const advice: LearningAdvice[] = [];
+  const eventIds = new Set(domain.events.map((e) => e.id));
   const redirt = countPotentialRedirty(domain);
 
   const reworkGather = [...domain.events]
@@ -30,15 +34,16 @@ export function buildLearningAdvice(
       text: "You re-cleaned ground that had already been cleared after new clippings landed there.",
       eventId: reworkGather.id,
       areaId: "debris",
+      sourceType: "event",
     });
-  } else if (redirt.count > 0) {
-    const spawn = [...domain.events]
-      .reverse()
-      .find((e) => e.type === "DEBRIS_SPAWNED" && e.kind === "clipping");
+  } else if (redirt.spawnEventIds.length > 0) {
+    // Point at a spawn that truly overlapped prior cleanup — not the last clipping anywhere
+    const spawnId = redirt.spawnEventIds[redirt.spawnEventIds.length - 1]!;
     advice.push({
       text: "New clippings landed on previously cleaned ground — a second cleanup would become spent rework.",
-      eventId: spawn?.id,
+      eventId: eventIds.has(spawnId) ? spawnId : undefined,
       areaId: "debris",
+      sourceType: "event",
     });
   }
 
@@ -48,6 +53,7 @@ export function buildLearningAdvice(
       text: "String trimmer cut tops only — roots still count until you pull them.",
       eventId: topCut.id,
       areaId: "flowerbed",
+      sourceType: "event",
     });
   }
 
@@ -57,6 +63,7 @@ export function buildLearningAdvice(
       text: "An ornamental was damaged — that mark stays for this visit.",
       eventId: dmg.id,
       areaId: "flowerbed",
+      sourceType: "event",
     });
   }
 
@@ -66,15 +73,18 @@ export function buildLearningAdvice(
       text: "Open lawn can look done while the path edge is still ragged — edge work is separate.",
       eventId: edgeEv?.id,
       areaId: "edge",
+      sourceType: edgeEv ? "event" : "current-state",
     });
   }
 
   if (ctx.unresolvedHazards > 0) {
     const h = Object.values(domain.hazards).find((x) => !x.cleared);
+    // No fake inspect:… eventId — this is live state advice (P1-05)
     advice.push({
       text: "Unresolved hazards still block powered blades in their local area.",
-      eventId: h ? `inspect:${h.id}` : undefined,
       areaId: "hazard",
+      sourceType: "current-state",
+      entityId: h?.id,
     });
   }
 
@@ -86,6 +96,7 @@ export function buildLearningAdvice(
       text: "An overcut notch will not heal by dragging again — it is a lasting quality mark.",
       eventId: overcut.id,
       areaId: "hedge",
+      sourceType: "event",
     });
   }
 

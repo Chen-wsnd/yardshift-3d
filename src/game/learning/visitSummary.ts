@@ -92,9 +92,12 @@ function pickKeyEvents(domain: GardenDomain): VisitKeyEvent[] {
   return out.slice(-12);
 }
 
+/** Events that imply real tool work — exclude TOOL_SELECTED (P1-04). */
 function toolsUsed(domain: GardenDomain): string[] {
   const ids = new Set<string>();
   for (const ev of domain.events) {
+    // Selection / recharge are not "used on the yard" (P1-04)
+    if (ev.type === "TOOL_SELECTED" || ev.type === "TOOL_RECHARGED") continue;
     if ("toolId" in ev && typeof (ev as { toolId?: string }).toolId === "string") {
       ids.add((ev as { toolId: string }).toolId);
     }
@@ -141,6 +144,8 @@ export function comparableCoverage(
   b: VisitSummary,
 ): boolean {
   if (a.fixtureVersion !== b.fixtureVersion) return false;
+  // Hard gate: quality bands must match (69% incomplete ≠ 72% acceptable) (P1-04)
+  if (a.qualityBand !== b.qualityBand) return false;
   const close = (x: number, y: number, tol: number) => Math.abs(x - y) <= tol;
   return (
     close(a.final.lawnPct, b.final.lawnPct, 8) &&
@@ -191,6 +196,16 @@ export function compareVisits(
       notes: [
         `Prior damage ${previous.final.ornamentalDamage}, hazards ${previous.final.hazardsUncleared}.`,
         `This visit damage ${current.final.ornamentalDamage}, hazards ${current.final.hazardsUncleared}.`,
+      ],
+    };
+  }
+  if (previous.qualityBand !== current.qualityBand) {
+    return {
+      comparable: false,
+      reason: `Quality band differs (${previous.qualityBand} vs ${current.qualityBand}) — do not compare efficiency.`,
+      notes: [
+        `Prior lawn ${Math.round(previous.final.lawnPct)}% (${previous.qualityBand}).`,
+        `This lawn ${Math.round(current.final.lawnPct)}% (${current.qualityBand}).`,
       ],
     };
   }

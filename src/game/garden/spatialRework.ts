@@ -50,23 +50,29 @@ export function appendCleanupRecord(
 export function countPotentialRedirty(domain: GardenDomain): {
   count: number;
   notes: string[];
+  /** Event IDs of clippings that actually landed on previously cleaned ground (P1-05). */
+  spawnEventIds: string[];
 } {
   const notes: string[] = [];
+  const spawnEventIds: string[] = [];
   let count = 0;
   const history = domain.cleanupHistory ?? [];
   for (const ev of domain.events) {
     if (ev.type !== "DEBRIS_SPAWNED") continue;
     if (ev.kind !== "clipping") continue;
-    const prior = history.some((h) => {
-      const idx = domain.events.findIndex((e) => e.id === ev.id);
-      return h.atEventIndex < idx && footprintsOverlap(h, { x: ev.x, z: ev.z, radius: 1.2 });
-    });
+    const idx = domain.events.findIndex((e) => e.id === ev.id);
+    const prior = history.some(
+      (h) =>
+        h.atEventIndex < idx &&
+        footprintsOverlap(h, { x: ev.x, z: ev.z, radius: 1.2 }),
+    );
     if (prior) {
       count++;
+      spawnEventIds.push(ev.id);
       notes.push(
         `New clippings at (${ev.x.toFixed(1)}, ${ev.z.toFixed(1)}) landed where you had already cleaned.`,
       );
     }
   }
-  return { count, notes };
+  return { count, notes, spawnEventIds };
 }

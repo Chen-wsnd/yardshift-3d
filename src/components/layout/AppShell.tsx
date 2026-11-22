@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
 import { PersistGate } from "./PersistGate";

@@ -63,6 +63,11 @@ export function EdgeTaskStage({
           last.current = null;
           onDragChange?.(false);
         }}
+        onPointerCancel={() => {
+          dragging.current = false;
+          last.current = null;
+          onDragChange?.(false);
+        }}
       >
         <planeGeometry args={[10, 2.2]} />
         <meshBasicMaterial transparent opacity={0.12} color="#cde" />

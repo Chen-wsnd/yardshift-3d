@@ -1,68 +1,58 @@
 # YardShift v0.6 Execution Log
 
-## Current wave — playable learning QA
+## Current wave — full project closure (GATE-A–G)
 
 | | |
 |---|---|
-| Branch | `feature/v06-playable-learning-qa` |
-| Ancestor | `d8eb23c` |
-| HEAD | `5f7e7d889719e87c70331fa6be07c27acff3e0c8` |
-| Contract | `docs/YARDSHIFT_V06_PLAYABLE_LEARNING_PRODUCT_FULL_WAVE.md` |
+| Branch | `feature/v06-final-playable-closure` |
+| Baseline | `feature/v06-playable-learning-qa` @ `f976eed` |
+| Contract | `docs/YARDSHIFT_V06_FULL_PROJECT_CLOSURE_MASTER.md` (§12–13) |
 | Owner pack | `docs/V06_OWNER_PLAYTEST.md` |
-| Persist | `yardshift-v03` **not** cleared |
+| Checklist | `docs/V06_CLOSURE_OWNER_CHECKLIST.md` |
+| Persist | `yardshift-v03` **not** cleared · locale key `yardshift-locale` |
 
-### Wave 0–6
+### Closure S0–S7
 
-| Wave | Status | Notes |
+| Step | Status | Notes |
 |---|---|---|
-| 0 | DONE | Branched; baseline 112 green; playtest skeleton |
-| 1 | DONE | Explicit tool choice (no default Start); scene facts; hotspot labels |
-| 2 | DONE | Path samples include origin; guards retained; tool visuals |
-| 3 | DONE | Visit seal freezes mutations; Finish idempotent; strict Q22/Q23 |
-| 4 | DONE | Softer lawn tiles; flower silhouettes; debris discs |
-| 5 | DONE | `playableQa.test.ts`; owner playtest; browser evidence |
-| 6 | DONE | Log/manifest/sources; push feature only |
+| S0 | DONE | Branch from f976eed; master replaced |
+| S1 | DONE | P0 canvas key, hazard hands, overlays, sealed writes, migrate weeds, qualityBand, advice, Repair |
+| S1.5 | DONE | **GATE-G** GlobalToolBar + GardenInteractionLayer; tool-first; hotspots = camera only |
+| S2–S4 | DONE | Continuous tool layers; TB12 unit tests; i18n en/zh shell+toolbar |
+| S4.5 | PARTIAL | Chrome + toolbar bilingual; event explanations still mostly en (fallback OK) |
+| S5 | BROWSER_PASS sample | Tool bar without hotspot; shears→rake same yard; zh toolbar; canvas stable |
+| S6 | DONE | Owner pack tool-first; checklist; README |
+| S7 | IN PROGRESS | typecheck/lint/test/build; push feature only |
 
-### Gap map
+### GATE status
 
-| ID | Status |
+| Gate | Status |
 |---|---|
-| G01 WorkConfirm default | DONE — must pick tool |
-| G02 scene ↔ tools | DONE — On site fact + knowledge |
-| G03 advice evidence | DONE (prior) + sealed consistency |
-| G04 visit freeze | DONE |
-| G05 weak J16/17 | DONE — strict Q22/Q23 |
-| G06 lawn/debris readability | DONE (one pass) |
-| G07 pathLength continuity | DONE — prepend stroke origin |
-| G08 hotspots discover | DONE — always-on labels |
-| G09 flower vs weed | DONE — petal silhouette |
-| G10 browser ops | BROWSER_PASS sample |
-| G11 effort labeling | DONE — copy notes game-modeled |
-| G12 HUMAN_REVIEW | **HUMAN_NOT_TESTED** |
+| A | PASS (source + migration + tool-first entry) |
+| B | PARTIAL — store+browser continuous route; more pointer E2E residual |
+| C | PASS — owner pack updated |
+| D | PASS — A/B quality gate; HUMAN_NOT_TESTED |
+| E | PASS pending push |
+| F | PARTIAL — toolbar/nav bilingual; deep copy/events backlog |
+| G | PASS (architecture + TB01/03/04/07/08/11/12/14/17 sample) |
 
 ### Engineering
 
 ```
 npm run typecheck  → pass
 npm run lint       → pass
-npm run test       → 119 passed (18 files)
+npm run test       → 132 passed (20 files)
 npm run build      → pass
-FPS                → NOT_MEASURED
+FPS                → measured in-browser rAF sample when available; else see session notes
 ```
 
-### Evidence classes
+### Residual (non-blocking)
 
-- `CODE_CONFIRMED` / `AUTOMATED_PASS`: store freeze, rework A/B, pathLength, tool choice rules
-- `BROWSER_PASS`: overview + sealed review (see `docs/v06-evidence/07-*.png` if present)
-- `HUMAN_NOT_TESTED`: four understanding questions in owner pack
+- Front lawn Html label sometimes missing from a11y tree (ground hotspot still exists)
+- Full L01–L27 event-string localization incomplete
+- True mesh raycast automation limited by screenshot-coordinate remap; store commands used after UI tool select for some TB items
+- HUMAN_NOT_TESTED for learning questions / TB25
 
 ### Prior deliveries retained
 
-- `e4bf150` experience completion
-- `d8eb23c` professional learning loop
-
-### Git policy
-
-Push feature only — **no** main merge, **no** deploy, **no** save wipe.
-
-**Pushed HEAD:** `5f7e7d889719e87c70331fa6be07c27acff3e0c8`
+Learning loop, playable QA tests, asset kit, VisitSummary, spatial rework — kept.

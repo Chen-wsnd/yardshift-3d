@@ -18,13 +18,18 @@ export function DebrisTaskStage({
   const rakeDebris = useGameStore((s) => s.rakeDebris);
   const blowDebris = useGameStore((s) => s.blowDebris);
   const bagNearbyPiles = useGameStore((s) => s.bagNearbyPiles);
-  const setFocusPoint = useGameStore((s) => s.setFocusPoint);
   const dragging = useRef(false);
   const last = useRef<{ x: number; z: number } | null>(null);
   const cx = focus?.x ?? -3.0;
   const cz = focus?.z ?? -4.2;
   const [pos, setPos] = useState<[number, number, number]>([cx, 0.2, cz]);
   const [facing, setFacing] = useState<[number, number]>([0, 1]);
+
+  const endDrag = () => {
+    dragging.current = false;
+    last.current = null;
+    onDragChange?.(false);
+  };
 
   const onMove = (x: number, z: number) => {
     const prev = last.current;
@@ -51,7 +56,7 @@ export function DebrisTaskStage({
         position={[1.5, 0.02, -1.0]}
         onPointerDown={(e) => {
           e.stopPropagation();
-          setFocusPoint({ x: e.point.x, z: e.point.z });
+          // Do NOT setFocusPoint every pointerDown — remounts Canvas (P0-02)
           if (selectedToolId === "bag") {
             bagNearbyPiles(e.point.x, e.point.z);
             return;
@@ -69,14 +74,12 @@ export function DebrisTaskStage({
           e.stopPropagation();
           onMove(e.point.x, e.point.z);
         }}
-        onPointerUp={() => {
-          dragging.current = false;
-          last.current = null;
-          onDragChange?.(false);
-        }}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
-        <planeGeometry args={[16, 14]} />
-        <meshStandardMaterial color="#7a9a5a" transparent opacity={0.12} />
+        {/* Sized for debris work — not a full-yard raycast steal (GATE-G) */}
+        <planeGeometry args={[12, 10]} />
+        <meshStandardMaterial color="#7a9a5a" transparent opacity={0.08} />
       </mesh>
       <GardenToolView
         toolId={selectedToolId}

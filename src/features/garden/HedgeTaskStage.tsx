@@ -12,7 +12,6 @@ export function HedgeTaskStage({
   const clusters = useGameStore((s) => s.work.garden?.hedgeClusters);
   const selectedToolId = useGameStore((s) => s.work.selectedToolId);
   const cutHedgeCluster = useGameStore((s) => s.cutHedgeCluster);
-  const setFocusPoint = useGameStore((s) => s.setFocusPoint);
   const dragging = useRef(false);
   const hit = useRef<Set<string>>(new Set());
   const [cursor, setCursor] = useState<[number, number, number]>([6.4, 0.8, 1]);
@@ -27,14 +26,14 @@ export function HedgeTaskStage({
     setCursor([x, 0.55, z]);
     const list = Object.values(clusters);
     for (const c of list) {
+      // One effective hit per cluster per stroke (P1-03) — no focus remount
+      if (hit.current.has(c.id)) continue;
       if (c.cut && !powered) continue;
       const d2 = (c.x - x) ** 2 + (c.z - z) ** 2;
       if (d2 > radius * radius) continue;
-      if (hit.current.has(c.id) && !powered) continue;
       hit.current.add(c.id);
       const overcut = powered && c.cut;
       cutHedgeCluster(c.id, selectedToolId, overcut);
-      setFocusPoint({ x: c.x, z: c.z + 0.35 });
     }
   };
 
@@ -66,6 +65,18 @@ export function HedgeTaskStage({
         onPointerUp={() => {
           dragging.current = false;
           onDragChange?.(false);
+        }}
+        onPointerCancel={() => {
+          dragging.current = false;
+          onDragChange?.(false);
+        }}
+        onPointerLeave={(e) => {
+          if (!dragging.current) return;
+          // Keep capture while dragging; only end if capture lost
+          if (!(e.target as HTMLElement).hasPointerCapture?.(e.pointerId)) {
+            dragging.current = false;
+            onDragChange?.(false);
+          }
         }}
       >
         <planeGeometry args={[4.5, 12]} />

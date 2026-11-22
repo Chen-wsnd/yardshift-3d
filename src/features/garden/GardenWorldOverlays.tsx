@@ -30,8 +30,9 @@ function HedgeOverlays() {
   );
 }
 
-function DebrisOverlays() {
+function DebrisOverlays({ interactive }: { interactive: boolean }) {
   const debris = useGameStore((s) => s.work.garden?.debris);
+  const visitSealed = useGameStore((s) => s.work.garden?.visitFinished);
   const setFocusPoint = useGameStore((s) => s.setFocusPoint);
   const setActiveGardenTask = useGameStore((s) => s.setActiveGardenTask);
   if (!debris) return null;
@@ -44,11 +45,16 @@ function DebrisOverlays() {
             key={d.id}
             position={[d.x, d.state === "gathered" ? 0.08 : 0.03, d.z]}
             rotation={[-Math.PI / 2, 0, 0]}
-            onClick={(e) => {
-              e.stopPropagation();
-              setFocusPoint({ x: d.x, z: d.z });
-              setActiveGardenTask("debris");
-            }}
+            onClick={
+              interactive
+                ? (e) => {
+                    e.stopPropagation();
+                    setFocusPoint({ x: d.x, z: d.z });
+                    // Sealed: focus only, do not enter work (P1-02)
+                    if (!visitSealed) setActiveGardenTask("debris");
+                  }
+                : undefined
+            }
           >
             <circleGeometry
               args={[d.state === "gathered" ? 0.38 : 0.16, 10]}
@@ -64,7 +70,7 @@ function DebrisOverlays() {
   );
 }
 
-function HazardOverlays() {
+function HazardOverlays({ raycastOff }: { raycastOff?: boolean }) {
   const hazards = useGameStore((s) => s.work.garden?.hazards);
   if (!hazards) return null;
   return (
@@ -72,7 +78,11 @@ function HazardOverlays() {
       {Object.values(hazards)
         .filter((h) => !h.cleared)
         .map((h) => (
-          <mesh key={h.id} position={[h.x, 0.12, h.z]}>
+          <mesh
+            key={h.id}
+            position={[h.x, 0.12, h.z]}
+            raycast={raycastOff ? () => null : undefined}
+          >
             <dodecahedronGeometry args={[0.22, 0]} />
             <meshStandardMaterial color="#7a7a7a" />
           </mesh>
@@ -81,11 +91,12 @@ function HazardOverlays() {
   );
 }
 
-function PlantOverlays() {
+function PlantOverlays({ raycastOff }: { raycastOff?: boolean }) {
   const plants = useGameStore((s) => s.work.garden?.plants);
   const { scene } = useGLTF(MODEL_CATALOG.dandelion.localPath);
   const weedProto = useMemo(() => scene.clone(true), [scene]);
   if (!plants) return null;
+  const noHit = raycastOff ? () => null : undefined;
   return (
     <group>
       {Object.values(plants).map((p) => {
@@ -96,16 +107,16 @@ function PlantOverlays() {
               key={p.id}
               position={[p.x, 0, p.z]}
               scale={p.topCut ? 0.45 : 0.85}
+              raycast={noHit}
             >
               <primitive object={weedProto.clone(true)} />
             </group>
           );
         }
-        // Simple flower silhouette — distinct from weed GLB (G09)
         const bloom = p.ornamentalDamage ? "#4a3020" : "#e07090";
         return (
-          <group key={p.id} position={[p.x, 0, p.z]}>
-            <mesh position={[0, 0.12, 0]}>
+          <group key={p.id} position={[p.x, 0, p.z]} raycast={noHit}>
+            <mesh position={[0, 0.12, 0]} raycast={noHit}>
               <cylinderGeometry args={[0.02, 0.025, 0.24, 6]} />
               <meshStandardMaterial color="#3d6b2e" />
             </mesh>
@@ -117,14 +128,17 @@ function PlantOverlays() {
                   0.28,
                   Math.sin((i / 5) * Math.PI * 2) * 0.08,
                 ]}
+                raycast={noHit}
               >
                 <sphereGeometry args={[0.05, 6, 6]} />
                 <meshStandardMaterial color={bloom} />
               </mesh>
             ))}
-            <mesh position={[0, 0.28, 0]}>
+            <mesh position={[0, 0.28, 0]} raycast={noHit}>
               <sphereGeometry args={[0.035, 6, 6]} />
-              <meshStandardMaterial color={p.ornamentalDamage ? "#2a1810" : "#f5d76e"} />
+              <meshStandardMaterial
+                color={p.ornamentalDamage ? "#2a1810" : "#f5d76e"}
+              />
             </mesh>
           </group>
         );
@@ -133,17 +147,29 @@ function PlantOverlays() {
   );
 }
 
-/** Shared world projections for overview + consistency with task stages. */
-export function GardenWorldOverlays({ includeLawn = true }: { includeLawn?: boolean }) {
+/**
+ * Shared world projections.
+ * `excludeTask`: hide interactive / duplicate overlays for the active stage (P0-03).
+ */
+export function GardenWorldOverlays({
+  includeLawn = true,
+  excludeTask = null,
+}: {
+  includeLawn?: boolean;
+  /** null = overview interactive; any string / "all" = presentational only (GATE-G) */
+  excludeTask?: string | null;
+}) {
+  // Tool layer owns rays — overlays stay visual (P0-03 / GATE-G)
+  const presentational = excludeTask != null;
   return (
     <group>
       {includeLawn ? <LawnOverviewOverlay /> : null}
       <Suspense fallback={null}>
         <HedgeOverlays />
-        <PlantOverlays />
+        <PlantOverlays raycastOff={presentational} />
       </Suspense>
-      <DebrisOverlays />
-      <HazardOverlays />
+      <DebrisOverlays interactive={!presentational} />
+      <HazardOverlays raycastOff={presentational} />
     </group>
   );
 }

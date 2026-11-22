@@ -5,7 +5,8 @@
 | | |
 |---|---|
 | Branch | `feature/v06-playable-learning-qa` |
-| Ancestor | `d8eb23c` (`feature/v06-professional-learning-loop`) |
+| Ancestor | `d8eb23c` |
+| HEAD | `5f7e7d889719e87c70331fa6be07c27acff3e0c8` |
 | Contract | `docs/YARDSHIFT_V06_PLAYABLE_LEARNING_PRODUCT_FULL_WAVE.md` |
 | Owner pack | `docs/V06_OWNER_PLAYTEST.md` |
 | Persist | `yardshift-v03` **not** cleared |
@@ -63,3 +64,5 @@ FPS                → NOT_MEASURED
 ### Git policy
 
 Push feature only — **no** main merge, **no** deploy, **no** save wipe.
+
+**Pushed HEAD:** `5f7e7d889719e87c70331fa6be07c27acff3e0c8`

@@ -2,7 +2,7 @@
 
 **Branch:** `feature/v06-tool-judgment-interaction-polish`  
 **Baseline:** `c85271b`  
-**Freeze SHA:** (filled after commit)
+**Freeze SHA:** `3a8bafd`
 
 ## Five limited fixes
 

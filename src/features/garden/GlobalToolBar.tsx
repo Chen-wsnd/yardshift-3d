@@ -233,7 +233,7 @@ export function GlobalToolBar() {
                   }
                   onClick={(e) => {
                     e.stopPropagation();
-                    selectTool(id);
+                    // Info only — must not select the tool or change work state
                     openInfo(id);
                   }}
                 >

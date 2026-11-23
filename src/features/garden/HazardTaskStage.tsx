@@ -37,45 +37,11 @@ export function HazardTaskStage() {
 
   if (!hazards) return null;
 
+  // World meshes for Hands. Screen HUD lives in GardenShell (reliable 2D).
   const list = Object.values(hazards).filter((h) => !h.cleared);
 
   return (
     <group>
-      {/* Screen-space fallback so Hands can always reach hazards even if GLB occludes */}
-      <Html fullscreen style={{ pointerEvents: "none" }}>
-        <div
-          className="pointer-events-none absolute left-3 top-24 z-10 flex max-w-xs flex-col gap-1"
-          data-testid="hazard-hands-panel"
-        >
-          {list.map((h) => {
-            const seen = inspection?.[h.id]?.observed;
-            const wood = isHardwood(h);
-            return (
-              <button
-                key={`hud-${h.id}`}
-                type="button"
-                data-testid={`hazard-hit-${h.id}`}
-                className="pointer-events-auto rounded bg-sky-50/95 px-2 py-1 text-left text-[11px] text-stone-800 shadow ring-1 ring-sky-300"
-                onClick={() => {
-                  if (!seen) inspectObject(h.id);
-                  else removeHazard(h.id);
-                }}
-              >
-                <span className="font-medium">
-                  {wood ? t("hazard.hardwood") : t("hazard.stone")}
-                </span>
-                <span className="ml-1 text-stone-500">
-                  {!seen
-                    ? t("hazard.tapInspect")
-                    : wood
-                      ? t("hazard.markAvoid")
-                      : t("hazard.moveAside")}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Html>
       {list.map((h) => {
         const seen = inspection?.[h.id]?.observed;
         const wood = isHardwood(h);

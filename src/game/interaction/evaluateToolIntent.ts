@@ -119,7 +119,8 @@ export function evaluateToolIntent(
             ? "intent.risk-stone-blocks"
             : "intent.risk-hardwood-blocks",
         allowCommit: false,
-        warnsAbnormalWear: true,
+        // Blocked path — no contact wear is applied by current rules
+        warnsAbnormalWear: false,
         suggestedAction: "clear-or-avoid",
       };
     }

@@ -63,6 +63,21 @@ export function migrateGardenDomain(garden: GardenDomain): GardenDomain {
     garden.edgeSegments && Object.keys(garden.edgeSegments).length > 0
       ? garden.edgeSegments
       : createEdgeSegments();
+  const hazards = { ...(garden.hazards ?? {}) };
+  // Legacy uncleared hardwood cannot be cleared with the current tool bar —
+  // keep the entity for history, but do not gate acceptable quality.
+  const hardwood = hazards["hedge-hardwood-1"];
+  if (hardwood && !hardwood.cleared) {
+    hazards["hedge-hardwood-1"] = {
+      ...hardwood,
+      requiredForReview: false,
+    };
+  }
+  for (const [id, h] of Object.entries(hazards)) {
+    if (h.requiredForReview === undefined && id === "lawn-stone-1") {
+      hazards[id] = { ...h, requiredForReview: true };
+    }
+  }
   return {
     ...garden,
     schemaVersion: 3,
@@ -73,5 +88,6 @@ export function migrateGardenDomain(garden: GardenDomain): GardenDomain {
     lastVisitNote: garden.lastVisitNote ?? null,
     visitHistory: garden.visitHistory ?? [],
     plants: migratePlants(garden.plants ?? {}),
+    hazards,
   };
 }

@@ -15,7 +15,8 @@ export interface ToolKnowledge {
   sourceIds?: string[];
 }
 
-export const FIXTURE_VERSION = "saturday-garden-v06.2";
+/** Bumped when required hazard set changes (hardwood removed from fresh yards). */
+export const FIXTURE_VERSION = "saturday-garden-v06.3";
 
 const KNOWLEDGE: Record<string, ToolKnowledge> = {
   "manual-reel-mower": {

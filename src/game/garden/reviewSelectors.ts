@@ -76,7 +76,7 @@ export function buildReviewSummary(
   const redirt = countPotentialRedirty(domain);
 
   const unresolvedHazards = Object.values(domain.hazards).filter(
-    (h) => !h.cleared,
+    (h) => !h.cleared && h.requiredForReview !== false,
   ).length;
   const uncutHedge = Object.values(domain.hedgeClusters).filter(
     (c) => !c.cut,

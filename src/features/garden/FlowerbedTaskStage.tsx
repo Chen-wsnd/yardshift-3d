@@ -74,10 +74,16 @@ function WeedMesh({
   const { scene } = useGLTF(MODEL_CATALOG.dandelion.localPath);
   const proto = useMemo(() => scene.clone(true), [scene]);
   return (
-    <group position={[x, 0, z]} scale={topCut ? 0.4 : 0.9}>
-      {/* Visual only — no pointer handlers on GLB */}
-      <group raycast={() => null}>
+    <group position={[x, 0, z]}>
+      {/* Visual scale only — hit proxy stays full size after top-cut */}
+      <group scale={topCut ? 0.4 : 0.9} raycast={() => null}>
         <primitive object={proto.clone(true)} />
+        {topCut ? (
+          <mesh position={[0, 0.05, 0]}>
+            <cylinderGeometry args={[0.04, 0.05, 0.08, 6]} />
+            <meshStandardMaterial color="#5a4030" />
+          </mesh>
+        ) : null}
       </group>
       <HitProxy
         radius={0.32}
@@ -87,12 +93,6 @@ function WeedMesh({
         onPointerOut={onLeave}
         onClick={onAct}
       />
-      {topCut ? (
-        <mesh position={[0, 0.05, 0]} raycast={() => null}>
-          <cylinderGeometry args={[0.04, 0.05, 0.08, 6]} />
-          <meshStandardMaterial color="#5a4030" />
-        </mesh>
-      ) : null}
       <mesh visible={false} userData={{ plantId: id, kind: "weed" }} />
     </group>
   );

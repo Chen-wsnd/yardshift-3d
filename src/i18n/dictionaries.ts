@@ -27,7 +27,8 @@ const en: Record<string, string> = {
   "toolbar.recharge": "Recharge",
   "toolbar.clearJam": "Clear jam",
   "toolbar.repair": "Repair",
-  "toolbar.repairHint": "Service a broken tool (effort / fee may apply)",
+  "toolbar.repairHint":
+    "Repair restores condition (garden visit: recovery effort; battery unchanged)",
   "toolbar.condition": "condition",
   "toolbar.wear": "wear",
   "toolbar.sealed": "view only",
@@ -49,6 +50,9 @@ const en: Record<string, string> = {
   "hazard.tapInspect": "Tap to inspect material",
   "hazard.moveAside": "Hands: move stone aside",
   "hazard.markAvoid": "Mark and avoid — not hand-clearable",
+  "weed.topCutAction": "String trimmer: top-cut weed",
+  "weed.alreadyTopCut": "Tops cut — switch to hand weeder",
+  "weed.pullRootAction": "Hand weeder: pull roots",
   "intent.no-target": "Point at a yard target to preview this tool.",
   "intent.tool-broken": "Tool is broken — repair before use.",
   "intent.tool-jammed": "Tool is jammed — clear the jam first.",
@@ -56,11 +60,11 @@ const en: Record<string, string> = {
   "intent.risk-stone-uninspected":
     "Possible hidden stone near the blades — inspect with Hands before cutting here.",
   "intent.risk-stone-blocks":
-    "Stone in the path — move it aside or steer around; blade contact can cause abnormal wear.",
+    "Stone in the path — move it aside or steer around; blades are blocked here until cleared (no wear while blocked).",
   "intent.risk-hardwood-uninspected":
     "Thick wood may be in this hedge — inspect before running the powered trimmer.",
   "intent.risk-hardwood-blocks":
-    "Hardwood blocks the powered trimmer — mark and avoid; do not force it.",
+    "Hardwood blocks the powered trimmer here — mark and avoid (no wear while blocked).",
   "intent.hazard-inspect": "Inspect this hazard to learn the material.",
   "intent.hardwood-needs-tool":
     "Thick entangled wood cannot be lifted by hand — mark it and keep powered trimmers away.",
@@ -133,7 +137,8 @@ const zh: Record<string, string> = {
   "toolbar.recharge": "充电",
   "toolbar.clearJam": "清除卡滞",
   "toolbar.repair": "修理",
-  "toolbar.repairHint": "维修损坏工具（可能消耗努力/费用）",
+  "toolbar.repairHint":
+    "修理恢复完好度（庭院访问：消耗恢复努力；不自动充电）",
   "toolbar.condition": "完好度",
   "toolbar.wear": "磨损",
   "toolbar.sealed": "只读",
@@ -155,6 +160,9 @@ const zh: Record<string, string> = {
   "hazard.tapInspect": "点击检查材质",
   "hazard.moveAside": "徒手：把石块挪开",
   "hazard.markAvoid": "标记并绕开 — 不能徒手清除",
+  "weed.topCutAction": "打草机：截顶杂草",
+  "weed.alreadyTopCut": "已截顶 — 换手除草器拔根",
+  "weed.pullRootAction": "手除草器：拔根",
   "intent.no-target": "将指针移到庭院目标上，可预览此工具效果。",
   "intent.tool-broken": "工具已损坏 — 请先修理。",
   "intent.tool-jammed": "工具卡滞 — 请先清除卡滞。",
@@ -162,11 +170,11 @@ const zh: Record<string, string> = {
   "intent.risk-stone-uninspected":
     "刀盘附近可能有隐藏石块 — 先用徒手检查，再在此处切割。",
   "intent.risk-stone-blocks":
-    "路径上有石块 — 先挪开或绕开；刀片碰撞可能导致异常磨损。",
+    "路径上有石块 — 先挪开或绕开；此处刀片被阻挡，阻挡期间不扣磨损。",
   "intent.risk-hardwood-uninspected":
     "绿篱中可能有粗硬木 — 启动电动修篱机前请先检查。",
   "intent.risk-hardwood-blocks":
-    "粗硬木阻挡电动修篱机 — 请标记并绕开，不要强行切削。",
+    "粗硬木在此处阻挡电动修篱机 — 请标记并绕开（阻挡期间不扣磨损）。",
   "intent.hazard-inspect": "检查此危险物，了解材质。",
   "intent.hardwood-needs-tool":
     "缠结的粗硬木无法徒手搬开 — 请标记并让电动修篱机远离。",

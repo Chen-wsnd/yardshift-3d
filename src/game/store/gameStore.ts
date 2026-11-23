@@ -385,16 +385,19 @@ export const useGameStore = create<GameState>()(
         if (tool.status !== "broken" && tool.condition > 5) {
           return { ok: false, reason: "Tool does not need repair." };
         }
-        const cost = repairCost(tool);
+        // Garden learning visit: effort-only repair (balance starts at 0).
+        // Non-garden / economy mode still charges credits.
+        const gardenLearning = Boolean(work.garden);
+        const cost = gardenLearning ? 0 : repairCost(tool);
+        const effortCost = gardenLearning ? 1.5 : 1.2;
         const ledgerId = `repair:${work.activeJobId ?? "none"}:${toolId}:${tool.condition}:${tool.status}`;
         if (work.ledger.some((l) => l.id === ledgerId)) {
           return { ok: false, reason: "Already repaired this incident." };
         }
-        // Learning mode: effort cost only — no hidden deferred debt (G11)
-        if (work.balance < cost) {
+        if (!gardenLearning && work.balance < cost) {
           return {
             ok: false,
-            reason: `Need ${cost} credits to repair (or use Try again).`,
+            reason: `Need ${cost} credits to repair.`,
           };
         }
         const repaired = applyRepair(tool);
@@ -404,7 +407,7 @@ export const useGameStore = create<GameState>()(
             id: `tool-repair:${toolId}:${garden.events.length}`,
             type: "TOOL_RECHARGED",
             toolId,
-            effort: 1.2,
+            effort: effortCost,
           });
         }
         set({
@@ -420,7 +423,9 @@ export const useGameStore = create<GameState>()(
                 kind: "repair",
                 jobId: work.activeJobId,
                 amount: cost,
-                label: `Repair ${toolId}`,
+                label: gardenLearning
+                  ? `Repair ${toolId} (effort)`
+                  : `Repair ${toolId}`,
               },
             ],
             lastEvents: [
@@ -429,7 +434,9 @@ export const useGameStore = create<GameState>()(
                 kind: "progress",
                 zoneId: "",
                 toolId,
-                explanation: "Tool repaired — condition restored; battery unchanged.",
+                explanation: gardenLearning
+                  ? "Tool repaired with recovery effort — condition restored; battery unchanged."
+                  : "Tool repaired — condition restored; battery unchanged.",
               },
             ],
           },

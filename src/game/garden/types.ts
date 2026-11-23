@@ -143,6 +143,12 @@ export interface HazardEntity {
   cleared: boolean;
   blocks: string[];
   label: string;
+  /**
+   * When false, hazard is observational / legacy and does not gate
+   * acceptable quality (no clearable tool in the current bar).
+   * Undefined defaults to true for required stones.
+   */
+  requiredForReview?: boolean;
 }
 
 /** Independent edge authority — not lawn WorkCells. */

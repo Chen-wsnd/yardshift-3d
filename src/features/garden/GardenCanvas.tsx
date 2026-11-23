@@ -10,7 +10,7 @@ import { GardenOverviewScene } from "./GardenOverviewScene";
 
 /**
  * Stable Canvas forever — never keyed by tool or focus (GATE-G / P0-02).
- * Optional focusAreaId only aims the camera.
+ * Clearing focus restores the default overview camera + OrbitControls target.
  */
 function CameraAim() {
   const { camera } = useThree();
@@ -22,8 +22,13 @@ function CameraAim() {
   useEffect(() => {
     const key = `${focusAreaId ?? ""}|${focus?.x ?? ""}|${focus?.z ?? ""}`;
     if (key === applied.current) return;
-    // Skip empty initial
-    if (!focus && !focusAreaId) return;
+
+    const isOverview = !focus && !focusAreaId;
+    // First mount already matches OVERVIEW_CAMERA from Canvas props — skip once.
+    if (isOverview && applied.current === "") {
+      applied.current = key;
+      return;
+    }
     applied.current = key;
 
     let target: [number, number, number];

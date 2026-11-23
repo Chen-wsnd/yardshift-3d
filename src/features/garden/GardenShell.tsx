@@ -170,6 +170,81 @@ export function GardenShell() {
 
           <GlobalToolBar />
 
+          {!visitSealed && work.selectedToolId == null ? (
+            <div
+              className="pointer-events-none absolute left-3 top-28 z-10 flex max-w-xs flex-col gap-1"
+              data-testid="hazard-hands-panel"
+            >
+              {Object.values(garden?.hazards ?? {})
+                .filter((h) => !h.cleared && h.requiredForReview !== false)
+                .map((h) => {
+                  const seen = garden?.inspection[h.id]?.observed;
+                  return (
+                    <button
+                      key={h.id}
+                      type="button"
+                      data-testid={`hazard-hit-${h.id}`}
+                      className="pointer-events-auto rounded bg-sky-50/95 px-2 py-1 text-left text-[11px] text-stone-800 shadow ring-1 ring-sky-300"
+                      onClick={() => {
+                        const observed =
+                          useGameStore.getState().work.garden?.inspection[h.id]
+                            ?.observed;
+                        if (!observed) inspectObject(h.id);
+                        else useGameStore.getState().removeHazard(h.id);
+                      }}
+                    >
+                      <span className="font-medium">{t("hazard.stone")}</span>
+                      <span className="ml-1 text-stone-500">
+                        {!seen ? t("hazard.tapInspect") : t("hazard.moveAside")}
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+          ) : null}
+
+          {!visitSealed &&
+          (work.selectedToolId === "string-trimmer" ||
+            work.selectedToolId === "hand-weeder") ? (
+            <div
+              className="pointer-events-none absolute left-3 top-28 z-10 flex max-h-48 max-w-xs flex-col gap-1 overflow-y-auto"
+              data-testid="flowerbed-work-panel"
+            >
+              {Object.values(garden?.plants ?? {})
+                .filter(
+                  (p) =>
+                    p.kind === "weed" &&
+                    !p.rootRemoved &&
+                    p.countsTowardCompletion !== false,
+                )
+                .slice(0, 6)
+                .map((p) => {
+                  const trimmer = work.selectedToolId === "string-trimmer";
+                  const label = trimmer
+                    ? p.topCut
+                      ? t("weed.alreadyTopCut")
+                      : t("weed.topCutAction")
+                    : t("weed.pullRootAction");
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      data-testid={`weed-hit-${p.id}`}
+                      disabled={trimmer && p.topCut}
+                      className="pointer-events-auto rounded bg-lime-50/95 px-2 py-1 text-left text-[11px] text-stone-800 shadow ring-1 ring-lime-400 disabled:opacity-50"
+                      onClick={() => {
+                        if (trimmer) useGameStore.getState().topCutWeed(p.id);
+                        else useGameStore.getState().pullWeed(p.id);
+                      }}
+                    >
+                      {label}
+                      <span className="ml-1 text-stone-500">{p.id}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          ) : null}
+
           <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
             <p className="max-w-[220px] rounded-md bg-white/85 px-2 py-1 text-[10px] text-stone-600 ring-1 ring-stone-200 sm:max-w-xs sm:text-xs">
               {t("garden.cameraHint")}

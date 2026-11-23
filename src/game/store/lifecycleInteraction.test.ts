@@ -60,9 +60,10 @@ describe("lifecycle interaction costs (S3)", () => {
     expect(g().work.tools.rake!.condition).toBeLessThan(before);
   });
 
-  it("hazard inspect then stone clear; hardwood refuses hand clear", () => {
+  it("hazard inspect then stone clear; fresh yard has no required hardwood", () => {
     const g = () => useGameStore.getState();
     g().selectTool(null);
+    expect(g().work.garden!.hazards["hedge-hardwood-1"]).toBeUndefined();
     g().inspectObject("lawn-stone-1");
     expect(g().work.garden!.inspection["lawn-stone-1"]?.observed).toBe(true);
     const stoneCond = Object.values(g().work.tools).map((t) => t.condition);
@@ -71,11 +72,25 @@ describe("lifecycle interaction costs (S3)", () => {
     expect(Object.values(g().work.tools).map((t) => t.condition)).toEqual(
       stoneCond,
     );
+  });
 
-    g().inspectObject("hedge-hardwood-1");
-    g().removeHazard("hedge-hardwood-1");
-    expect(g().work.garden!.hazards["hedge-hardwood-1"].cleared).toBe(false);
-    expect(g().work.lastEvents[0]?.id).toBe("hazard-hardwood");
+  it("garden repair works at balance 0 via recovery effort", () => {
+    const g = () => useGameStore.getState();
+    const tool = g().work.tools["lawn-mower"]!;
+    useGameStore.setState({
+      work: {
+        ...g().work,
+        balance: 0,
+        tools: {
+          ...g().work.tools,
+          "lawn-mower": { ...tool, status: "broken", condition: 0 },
+        },
+      },
+    });
+    const result = g().repairTool("lawn-mower");
+    expect(result.ok).toBe(true);
+    expect(g().work.tools["lawn-mower"]!.status).toBe("ready");
+    expect(g().work.balance).toBe(0);
   });
 
   it("fresh yard defaults to Hands (null tool)", () => {

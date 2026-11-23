@@ -106,6 +106,11 @@ export function createPlants(): Record<string, PlantEntity> {
   return out;
 }
 
+/**
+ * Required clearable hazards for a reachable acceptable visit.
+ * Hardwood was removed from the fresh fixture — no bar tool can clear it.
+ * Legacy saves may still carry hedge-hardwood-1; migrate marks it non-required.
+ */
 export function createHazards(): Record<string, HazardEntity> {
   return {
     "lawn-stone-1": {
@@ -115,14 +120,7 @@ export function createHazards(): Record<string, HazardEntity> {
       cleared: false,
       blocks: ["lawn-mower", "manual-reel-mower"],
       label: "Hidden stone in the lawn",
-    },
-    "hedge-hardwood-1": {
-      id: "hedge-hardwood-1",
-      x: 6.35,
-      z: 1.0,
-      cleared: false,
-      blocks: ["hedge-trimmer"],
-      label: "Thick entangled wood in the hedge",
+      requiredForReview: true,
     },
   };
 }

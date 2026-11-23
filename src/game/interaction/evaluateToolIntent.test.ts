@@ -53,7 +53,7 @@ describe("evaluateToolIntent (preview, zero side effects)", () => {
     const flowerIntent = evaluateToolIntent(
       "hand-weeder",
       { kind: "flower", id: flower.id },
-      { garden, tool: tool({ id: "hand-weeder", resourceType: "none" }) },
+      { garden, tool: tool({ id: "hand-weeder", resourceType: "none", power: "manual" }) },
     );
     expect(flowerIntent.level).toBe("risk");
     expect(flowerIntent.allowCommit).toBe(true);
@@ -67,16 +67,24 @@ describe("evaluateToolIntent (preview, zero side effects)", () => {
     expect(topIntent.allowCommit).toBe(false);
   });
 
-  it("hardwood after inspect cannot be hand-cleared", () => {
+  it("legacy hardwood hazard still teaches mark-and-avoid", () => {
     const garden = createFreshGardenDomain();
-    const id = "hedge-hardwood-1";
-    garden.inspection[id] = {
+    garden.hazards["hedge-hardwood-1"] = {
+      id: "hedge-hardwood-1",
+      x: 6.35,
+      z: 1.0,
+      cleared: false,
+      blocks: ["hedge-trimmer"],
+      label: "Thick entangled wood in the hedge",
+      requiredForReview: false,
+    };
+    garden.inspection["hedge-hardwood-1"] = {
       observed: true,
       effort: 0.3,
     };
     const intent = evaluateToolIntent(
       null,
-      { kind: "hazard", id },
+      { kind: "hazard", id: "hedge-hardwood-1" },
       { garden },
     );
     expect(intent.level).toBe("ineffective");
@@ -95,5 +103,11 @@ describe("evaluateToolIntent (preview, zero side effects)", () => {
     );
     expect(intent.level).toBe("unavailable");
     expect(intent.suggestedAction).toBe("recharge");
+  });
+
+  it("fresh yard has no required hardwood hazard", () => {
+    const garden = createFreshGardenDomain();
+    expect(garden.hazards["hedge-hardwood-1"]).toBeUndefined();
+    expect(garden.hazards["lawn-stone-1"]?.requiredForReview).not.toBe(false);
   });
 });

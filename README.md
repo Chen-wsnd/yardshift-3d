@@ -1,21 +1,21 @@
 # YardShift 3D
 
-Browser-based 3D gardening simulation. One continuous home garden where observation, tool choice, cross-task debris, and work review teach how experienced gardeners organise a job.
+Browser-based 3D gardening simulation. One continuous Saturday home garden where observation, tool choice, cross-task debris, and a sealed work review teach how experienced gardeners organise a job.
 
-**Current playtest path:** V06 final playable closure (`feature/v06-final-playable-closure`) — **global Tool Bar + one continuous yard** (GATE-G). Owner pack: `docs/V06_OWNER_PLAYTEST.md`.
+**Hackathon release:** V06 final freeze on `main` (source branch `feature/v06-tool-judgment-interaction-polish`). Freeze fix SHA `3a8bafd`; delivery tip includes this README. Owner / freeze notes: `docs/V06_OWNER_PLAYTEST.md`, `docs/V06_FINAL_FREEZE_DELIVERY.md`.
 
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript strict · Tailwind 4 · Three.js / R3F / Drei · Zustand (persisted) · ESLint · Vitest
+Next.js 15 (App Router) · React 19 · TypeScript strict · Tailwind 4 · Three.js / React Three Fiber / Drei · Zustand (persisted) · ESLint · Vitest
 
-## Quick start
+## Local start
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) (or the port you choose, e.g. `npm run dev -- -p 3001` → [http://127.0.0.1:3001](http://127.0.0.1:3001)).
 
 | Script | Purpose |
 | --- | --- |
@@ -29,24 +29,34 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Optional QA overlay: `/?debugPlacement=1`
 
-## Play loop (V06 · tool-first)
+Persist keys (do not wipe for normal play): `yardshift-v03` (garden), `yardshift-locale` (language).
 
-1. **Yard (`/`)** — one continuous Saturday garden; bottom **Tools** bar always available (Hands / Inspect + all work tools).
-2. Select a tool, then drag/click matching targets — **no need to enter a TaskStage first**. Area labels only move the camera.
-3. Switch tools in place (e.g. shears → rake under the hedge) without leaving the yard.
-4. **Causality** — clippings spawn; clean-then-trim creates rework; sealed visit is read-only.
-5. **Recharge / Clear jam / Repair** — distinct recoveries on the tool bar.
-6. Language: **English / 中文** (key `yardshift-locale`). Persist key `yardshift-v03` (untouched by locale).
+## 60-second demo
 
-Specs: `docs/YARDSHIFT_V06_SINGLE_MASTER_CURSOR_SPEC.md` · atlas: `docs/YARDSHIFT_V06_IMPLEMENTATION_ATLAS_AND_RECOVERY_ADDENDUM.md` · log: `docs/V06_EXECUTION_LOG.md`
+1. Open the yard — bottom **Tools** bar visible; **Hands / Inspect** is the default.
+2. Click **`!`** next to String Trimmer (打草机) — tool intro only; Hands stays selected.
+3. Select String Trimmer → top-cut one weed → select Hand Weeder → pull that root.
+4. Hands → inspect the lawn stone → move it aside.
+5. Select the reel mower → left-drag on the lawn; click **⟲** to restore the overview camera.
+6. **Finish visit** → real Visit summary / work review.
 
-## Known limits (non-blocking)
+## Known Limitations
 
-- Debris / some tools still use readable proxy meshes in-stage (kit GLBs are in-repo).
+- **Camera gestures:** RMB orbit, mouse-wheel zoom, and middle-button pan are wired in OrbitControls (`LMB` = work, `RMB` = rotate, `MMB` = pan, wheel = zoom). Automated freeze QA could not fully verify those three gestures with real mouse drags; treat them as **HUMAN_NOT_TESTED**. Overview reset via **⟲** was verified.
+- **Weed picking:** 3D hit proxies stay full-size after top-cut, but canvas picking can still be brittle; a Shell **flowerbed work panel** is the reliable UI fallback for top-cut → pull.
+- Hardwood in the hedge is **not** a required clearable hazard on fresh yards (no fake hand-clear). Legacy saves keep the object marked non-required for review.
+- Garden repair at balance `0` uses **recovery effort** (no credit charge); the Repair control only appears when a tool is `broken`.
+- Debris / some tools still use readable proxy meshes in places (kit GLBs are in-repo).
 - Path edge uses **independent** edge segments (not lawn cells).
-- Hazard stone is an overlay (starter GLB has no rock node).
-- Touch / mobile pointer: limited support this closure; desktop mouse is the verified path.
-- Human learning outcome remains `HUMAN_NOT_TESTED` until a person runs the Owner pack.
+- Touch / mobile pointer: limited; desktop mouse is the intended path.
+- Owner learning outcome remains `HUMAN_NOT_TESTED` until a person runs the Owner pack. **150 automated tests ≠ full human acceptance.**
+
+## Specs & evidence
+
+- Specs: `docs/YARDSHIFT_V06_SINGLE_MASTER_CURSOR_SPEC.md`
+- Atlas: `docs/YARDSHIFT_V06_IMPLEMENTATION_ATLAS_AND_RECOVERY_ADDENDUM.md`
+- Freeze delivery: `docs/V06_FINAL_FREEZE_DELIVERY.md`
+- Browser evidence: `docs/browser-evidence/v06-freeze/`
 
 ## Assets & Credits
 

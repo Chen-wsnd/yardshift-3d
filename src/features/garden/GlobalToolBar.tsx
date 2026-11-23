@@ -111,17 +111,31 @@ export function GlobalToolBar() {
         >
           <p>
             <span className="font-medium">{t("tool.goodFor")}:</span>{" "}
-            {knowledge.bestFor.join("; ")}
+            {t(
+              `tool.knowledge.${knowledge.toolId}.bestFor`,
+              knowledge.bestFor.join("; "),
+            )}
           </p>
           <p className="mt-1">
             <span className="font-medium">{t("tool.limit")}:</span>{" "}
-            {knowledge.limitation}
+            {t(
+              `tool.knowledge.${knowledge.toolId}.limit`,
+              knowledge.limitation,
+            )}
           </p>
-          <p className="mt-1 text-stone-500">{knowledge.effectToWatch}</p>
+          <p className="mt-1 text-stone-500">
+            {t(
+              `tool.knowledge.${knowledge.toolId}.effect`,
+              knowledge.effectToWatch,
+            )}
+          </p>
           {knowledge.preflight?.length ? (
             <p className="mt-1 text-stone-500">
               <span className="font-medium">{t("tool.check")}:</span>{" "}
-              {knowledge.preflight.join("; ")}
+              {t(
+                `tool.knowledge.${knowledge.toolId}.check`,
+                knowledge.preflight.join("; "),
+              )}
             </p>
           ) : null}
           <button

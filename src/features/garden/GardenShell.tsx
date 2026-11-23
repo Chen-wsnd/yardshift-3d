@@ -76,6 +76,7 @@ export function GardenShell() {
     0;
 
   const visitSealed = Boolean(garden?.visitFinished);
+  const reviewOpen = Boolean(garden?.reviewOpen);
 
   return (
     <AppShell showBalance={false}>
@@ -91,7 +92,7 @@ export function GardenShell() {
               {t("garden.title")}
               {focusArea ? (
                 <span className="ml-2 text-sm font-normal text-stone-500">
-                  · {focusArea.name}
+                  · {t(`area.${focusArea.id}`, focusArea.name)}
                 </span>
               ) : null}
             </h1>
@@ -99,7 +100,8 @@ export function GardenShell() {
               {!hydrated ? "…" : t("garden.prompt")}
             </p>
             <p className="mt-0.5 hidden text-xs text-stone-400 sm:block">
-              Lawn {finishedCells} · Hedge {uncutHedge} · Debris {looseDebris}
+              {t("garden.stat.lawn")} {finishedCells} · {t("garden.stat.hedge")}{" "}
+              {uncutHedge} · {t("garden.stat.debris")} {looseDebris}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -165,12 +167,14 @@ export function GardenShell() {
             />
           </div>
 
-          <WorkPlanPanel open={planOpen} onClose={() => setPlanOpen(false)} />
+          {!reviewOpen ? (
+            <WorkPlanPanel open={planOpen} onClose={() => setPlanOpen(false)} />
+          ) : null}
           <WorkReviewPanel />
 
-          <GlobalToolBar />
+          {!reviewOpen ? <GlobalToolBar /> : null}
 
-          {!visitSealed && work.selectedToolId == null ? (
+          {!reviewOpen && !visitSealed && work.selectedToolId == null ? (
             <div
               className="pointer-events-none absolute left-3 top-28 z-10 flex max-w-xs flex-col gap-1"
               data-testid="hazard-hands-panel"
@@ -203,7 +207,8 @@ export function GardenShell() {
             </div>
           ) : null}
 
-          {!visitSealed &&
+          {!reviewOpen &&
+          !visitSealed &&
           (work.selectedToolId === "string-trimmer" ||
             work.selectedToolId === "hand-weeder") ? (
             <div
@@ -245,30 +250,35 @@ export function GardenShell() {
             </div>
           ) : null}
 
-          <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
-            <p className="max-w-[220px] rounded-md bg-white/85 px-2 py-1 text-[10px] text-stone-600 ring-1 ring-stone-200 sm:max-w-xs sm:text-xs">
-              {t("garden.cameraHint")}
-            </p>
-            <button
-              type="button"
-              className="pointer-events-auto rounded-md bg-white/90 px-2 py-1 text-xs text-stone-700 ring-1 ring-stone-300"
-              data-testid="reset-camera"
-              onClick={() => {
-                setFocusPoint(null);
-                setActiveGardenTask(null);
-              }}
-            >
-              ⟲ {t("garden.resetCamera")}
-            </button>
-          </div>
-
-          {work.selectedToolId ? (
-            <div className="pointer-events-none absolute bottom-36 left-3 z-10 max-w-xs rounded-md bg-white/90 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200 sm:bottom-40">
-              {getToolKnowledge(work.selectedToolId)?.effectToWatch ??
-                "Watch how this tool changes the yard."}
+          {!reviewOpen ? (
+            <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
+              <p className="max-w-[220px] rounded-md bg-white/85 px-2 py-1 text-[10px] text-stone-600 ring-1 ring-stone-200 sm:max-w-xs sm:text-xs">
+                {t("garden.cameraHint")}
+              </p>
+              <button
+                type="button"
+                className="pointer-events-auto rounded-md bg-white/90 px-2 py-1 text-xs text-stone-700 ring-1 ring-stone-300"
+                data-testid="reset-camera"
+                onClick={() => {
+                  setFocusPoint(null);
+                  setActiveGardenTask(null);
+                }}
+              >
+                ⟲ {t("garden.resetCamera")}
+              </button>
             </div>
           ) : null}
-          {event ? (
+
+          {!reviewOpen && work.selectedToolId ? (
+            <div className="pointer-events-none absolute bottom-36 left-3 z-10 max-w-xs rounded-md bg-white/90 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200 sm:bottom-40">
+              {t(
+                `tool.knowledge.${work.selectedToolId}.effect`,
+                getToolKnowledge(work.selectedToolId)?.effectToWatch ??
+                  "Watch how this tool changes the yard.",
+              )}
+            </div>
+          ) : null}
+          {!reviewOpen && event ? (
             <div
               className="pointer-events-none absolute left-3 top-3 z-10 max-w-sm rounded-md bg-emerald-50/95 px-3 py-2 text-sm text-emerald-950 ring-1 ring-emerald-200"
               role="status"

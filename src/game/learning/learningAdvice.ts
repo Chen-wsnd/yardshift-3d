@@ -2,6 +2,8 @@ import type { GardenDomain } from "@/game/garden/types";
 import { countPotentialRedirty } from "@/game/garden/spatialRework";
 
 export interface LearningAdvice {
+  /** Stable i18n key for review UI; `text` remains English fallback. */
+  code: string;
   text: string;
   /** Only set when a real sealed/history event backs the tip (P1-05). */
   eventId?: string;
@@ -31,6 +33,7 @@ export function buildLearningAdvice(
     .find((e) => e.type === "DEBRIS_GATHERED" && e.isRework);
   if (reworkGather && reworkGather.type === "DEBRIS_GATHERED") {
     advice.push({
+      code: "advice.reworkGather",
       text: "You re-cleaned ground that had already been cleared after new clippings landed there.",
       eventId: reworkGather.id,
       areaId: "debris",
@@ -40,6 +43,7 @@ export function buildLearningAdvice(
     // Point at a spawn that truly overlapped prior cleanup — not the last clipping anywhere
     const spawnId = redirt.spawnEventIds[redirt.spawnEventIds.length - 1]!;
     advice.push({
+      code: "advice.redirtSpawn",
       text: "New clippings landed on previously cleaned ground — a second cleanup would become spent rework.",
       eventId: eventIds.has(spawnId) ? spawnId : undefined,
       areaId: "debris",
@@ -50,6 +54,7 @@ export function buildLearningAdvice(
   const topCut = domain.events.find((e) => e.type === "PLANT_TOP_CUT");
   if (topCut && ctx.weedsWithRoots > 0) {
     advice.push({
+      code: "advice.topCutRoots",
       text: "String trimmer cut tops only — roots still count until you pull them.",
       eventId: topCut.id,
       areaId: "flowerbed",
@@ -60,6 +65,7 @@ export function buildLearningAdvice(
   const dmg = domain.events.find((e) => e.type === "ENVIRONMENT_DAMAGED");
   if (dmg && dmg.type === "ENVIRONMENT_DAMAGED") {
     advice.push({
+      code: "advice.ornamentalDamage",
       text: "An ornamental was damaged — that mark stays for this visit.",
       eventId: dmg.id,
       areaId: "flowerbed",
@@ -70,6 +76,7 @@ export function buildLearningAdvice(
   if (ctx.lawnFinishedPct >= 70 && ctx.edgeFinishedPct < 40) {
     const edgeEv = domain.events.find((e) => e.type === "EDGE_WORKED");
     advice.push({
+      code: "advice.edgeSeparate",
       text: "Open lawn can look done while the path edge is still ragged — edge work is separate.",
       eventId: edgeEv?.id,
       areaId: "edge",
@@ -81,6 +88,7 @@ export function buildLearningAdvice(
     const h = Object.values(domain.hazards).find((x) => !x.cleared);
     // No fake inspect:… eventId — this is live state advice (P1-05)
     advice.push({
+      code: "advice.hazardsBlock",
       text: "Unresolved hazards still block powered blades in their local area.",
       areaId: "hazard",
       sourceType: "current-state",
@@ -93,6 +101,7 @@ export function buildLearningAdvice(
   );
   if (overcut) {
     advice.push({
+      code: "advice.hedgeOvercut",
       text: "An overcut notch will not heal by dragging again — it is a lasting quality mark.",
       eventId: overcut.id,
       areaId: "hedge",

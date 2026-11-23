@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { GARDEN_TASKS } from "@/data/gardenTasks";
 import { useGameStore } from "@/game/store/gameStore";
+import { useLocale } from "@/i18n/LocaleProvider";
 
 export function WorkPlanPanel({
   open,
@@ -11,6 +12,7 @@ export function WorkPlanPanel({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   const garden = useGameStore((s) => s.work.garden);
   const revisePlan = useGameStore((s) => s.revisePlan);
   if (!open || !garden) return null;
@@ -28,26 +30,27 @@ export function WorkPlanPanel({
     <div className="pointer-events-auto absolute right-3 top-14 z-20 w-72 rounded-lg bg-[#f7f3ea]/95 p-3 shadow-md ring-1 ring-stone-900/10">
       <div className="flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-lg">
-          My arrangement
+          {t("plan.title")}
         </h2>
-        <button type="button" className="text-sm text-stone-500" onClick={onClose}>
-          Close
+        <button
+          type="button"
+          className="text-sm text-stone-500"
+          onClick={onClose}
+        >
+          {t("common.close")}
         </button>
       </div>
-      <p className="mt-1 text-xs text-stone-500">
-        Optional notes for yourself — not a required order. Skip anytime and work
-        where you see fit.
-      </p>
+      <p className="mt-1 text-xs text-stone-500">{t("plan.hint")}</p>
       <ol className="mt-3 space-y-1">
         {order.map((id, i) => {
-          const task = GARDEN_TASKS.find((t) => t.id === id);
+          const task = GARDEN_TASKS.find((x) => x.id === id);
           return (
             <li
               key={id}
               className="flex items-center justify-between rounded bg-white/80 px-2 py-1 text-sm"
             >
               <span>
-                {i + 1}. {task?.name ?? id}
+                {i + 1}. {t(`area.${id}`, task?.name ?? id)}
               </span>
               <span className="flex gap-1">
                 <Button variant="ghost" onClick={() => move(i, -1)}>

@@ -24,8 +24,8 @@ export function GardenHotspots({
   const setFocusPoint = useGameStore((s) => s.setFocusPoint);
   const setActiveGardenTask = useGameStore((s) => s.setActiveGardenTask);
 
-  // Work tools selected → hide pickable markers so they cannot steal raycasts
-  const workMode = selectedToolId != null;
+  // Work tools or open review → hide markers / Drei Html so they cannot steal or pierce UI
+  const workMode = selectedToolId != null || Boolean(garden?.reviewOpen);
 
   const focusArea = (taskId: string) => {
     const task = GARDEN_TASKS.find((x) => x.id === taskId);
@@ -86,7 +86,9 @@ export function GardenHotspots({
                   onPointerEnter={() => setHovered(task.id)}
                   onPointerLeave={() => setHovered(null)}
                 >
-                  <div className="font-medium leading-tight">{task.name}</div>
+                  <div className="font-medium leading-tight">
+                    {t(`area.${task.id}`, task.name)}
+                  </div>
                   <div className="text-[9px] text-stone-500">
                     {t("garden.cameraOnly")}
                   </div>

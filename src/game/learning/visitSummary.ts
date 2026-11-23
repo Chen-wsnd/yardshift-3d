@@ -158,12 +158,21 @@ export function comparableCoverage(
   );
 }
 
+export type CompareNoteItem = {
+  code: string;
+  params?: Record<string, string | number>;
+};
+
 export interface VisitCompareResult {
   comparable: boolean;
+  /** English fallback for tests / logging. */
   reason: string;
+  reasonCode: string;
+  reasonParams?: Record<string, string | number>;
   effortDelta?: number;
   reworkDelta?: number;
   notes: string[];
+  noteItems: CompareNoteItem[];
 }
 
 export function compareVisits(
@@ -174,14 +183,18 @@ export function compareVisits(
     return {
       comparable: false,
       reason: "No prior sealed visit to compare.",
+      reasonCode: "compare.noPrior",
       notes: [],
+      noteItems: [],
     };
   }
   if (previous.fixtureVersion !== current.fixtureVersion) {
     return {
       comparable: false,
       reason: "Fixture versions differ — do not compare efficiency.",
+      reasonCode: "compare.fixtureMismatch",
       notes: [],
+      noteItems: [],
     };
   }
   // Safety / damage first
@@ -193,9 +206,26 @@ export function compareVisits(
       comparable: false,
       reason:
         "Safety or ornamental damage differs — compare quality first, not speed.",
+      reasonCode: "compare.safetyDiffers",
       notes: [
         `Prior damage ${previous.final.ornamentalDamage}, hazards ${previous.final.hazardsUncleared}.`,
         `This visit damage ${current.final.ornamentalDamage}, hazards ${current.final.hazardsUncleared}.`,
+      ],
+      noteItems: [
+        {
+          code: "compare.priorSafety",
+          params: {
+            damage: previous.final.ornamentalDamage,
+            hazards: previous.final.hazardsUncleared,
+          },
+        },
+        {
+          code: "compare.thisSafety",
+          params: {
+            damage: current.final.ornamentalDamage,
+            hazards: current.final.hazardsUncleared,
+          },
+        },
       ],
     };
   }
@@ -203,9 +233,30 @@ export function compareVisits(
     return {
       comparable: false,
       reason: `Quality band differs (${previous.qualityBand} vs ${current.qualityBand}) — do not compare efficiency.`,
+      reasonCode: "compare.bandDiffers",
+      reasonParams: {
+        prior: previous.qualityBand,
+        current: current.qualityBand,
+      },
       notes: [
         `Prior lawn ${Math.round(previous.final.lawnPct)}% (${previous.qualityBand}).`,
         `This lawn ${Math.round(current.final.lawnPct)}% (${current.qualityBand}).`,
+      ],
+      noteItems: [
+        {
+          code: "compare.priorLawnBand",
+          params: {
+            pct: Math.round(previous.final.lawnPct),
+            band: previous.qualityBand,
+          },
+        },
+        {
+          code: "compare.thisLawnBand",
+          params: {
+            pct: Math.round(current.final.lawnPct),
+            band: current.qualityBand,
+          },
+        },
       ],
     };
   }
@@ -214,38 +265,70 @@ export function compareVisits(
       comparable: false,
       reason:
         "Final coverage/quality differs — cannot fairly compare efficiency.",
+      reasonCode: "compare.coverageDiffers",
       notes: [
         `Prior lawn ${Math.round(previous.final.lawnPct)}% / edge ${Math.round(previous.final.edgePct)}%.`,
         `This lawn ${Math.round(current.final.lawnPct)}% / edge ${Math.round(current.final.edgePct)}%.`,
+      ],
+      noteItems: [
+        {
+          code: "compare.priorCoverage",
+          params: {
+            lawn: Math.round(previous.final.lawnPct),
+            edge: Math.round(previous.final.edgePct),
+          },
+        },
+        {
+          code: "compare.thisCoverage",
+          params: {
+            lawn: Math.round(current.final.lawnPct),
+            edge: Math.round(current.final.edgePct),
+          },
+        },
       ],
     };
   }
   const effortDelta = current.effort.total - previous.effort.total;
   const reworkDelta = current.effort.rework - previous.effort.rework;
   const notes: string[] = [];
+  const noteItems: CompareNoteItem[] = [];
   if (Math.abs(reworkDelta) > 0.05) {
+    const amount = Math.abs(reworkDelta).toFixed(1);
     notes.push(
       reworkDelta > 0
-        ? `This visit spent ${reworkDelta.toFixed(1)} more rework effort (same-area second cleanups).`
-        : `This visit spent ${(-reworkDelta).toFixed(1)} less rework effort.`,
+        ? `This visit spent ${amount} more rework effort (same-area second cleanups).`
+        : `This visit spent ${amount} less rework effort.`,
     );
+    noteItems.push({
+      code: reworkDelta > 0 ? "compare.reworkMore" : "compare.reworkLess",
+      params: { amount },
+    });
   }
   if (Math.abs(effortDelta) > 0.05) {
+    const amount = Math.abs(effortDelta).toFixed(1);
     notes.push(
       effortDelta > 0
-        ? `Total game-modeled effort was ${effortDelta.toFixed(1)} higher.`
-        : `Total game-modeled effort was ${(-effortDelta).toFixed(1)} lower.`,
+        ? `Total game-modeled effort was ${amount} higher.`
+        : `Total game-modeled effort was ${amount} lower.`,
     );
+    noteItems.push({
+      code: effortDelta > 0 ? "compare.effortHigher" : "compare.effortLower",
+      params: { amount },
+    });
   }
   const toolDiff = current.toolsUsed.filter((t) => !previous.toolsUsed.includes(t));
   if (toolDiff.length) {
-    notes.push(`Different tools used this time: ${toolDiff.join(", ")}.`);
+    const tools = toolDiff.join(", ");
+    notes.push(`Different tools used this time: ${tools}.`);
+    noteItems.push({ code: "compare.toolsDiffer", params: { tools } });
   }
   return {
     comparable: true,
     reason: "Same fixture and similar final quality — effort differences are meaningful.",
+    reasonCode: "compare.ok",
     effortDelta,
     reworkDelta,
     notes,
+    noteItems,
   };
 }

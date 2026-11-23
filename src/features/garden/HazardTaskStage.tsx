@@ -123,7 +123,7 @@ export function HazardTaskStage() {
                 }
               />
             </mesh>
-            {(hovered || seen) && (
+            {!garden?.reviewOpen && (hovered || seen) && (
               <Html distanceFactor={14} position={[0, 1.2, 0]} center>
                 <div
                   className="pointer-events-none max-w-[120px] rounded bg-white/90 px-1.5 py-1 text-[10px] text-stone-700 shadow"

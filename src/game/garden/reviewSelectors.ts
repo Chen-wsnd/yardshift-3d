@@ -5,6 +5,12 @@ import { buildLearningAdvice } from "@/game/learning/learningAdvice";
 import { countPotentialRedirty } from "./spatialRework";
 import type { GardenDomain } from "./types";
 
+/** Stable i18n-ready note; English `qualityNotes` strings remain for tests. */
+export type ReviewNoteItem = {
+  code: string;
+  params?: Record<string, string | number>;
+};
+
 export interface ReviewSummary {
   productive: number;
   setup: number;
@@ -15,7 +21,12 @@ export interface ReviewSummary {
   qualityNotes: string[];
   reworkNotes: string[];
   completionNotes: string[];
+  /** Prefer these in UI — do not string-replace English note sentences. */
+  completionItems: ReviewNoteItem[];
+  qualityItems: ReviewNoteItem[];
+  reworkItems: ReviewNoteItem[];
   learningAdvice: {
+    code: string;
     text: string;
     eventId?: string;
     areaId?: string;
@@ -95,33 +106,69 @@ export function buildReviewSummary(
 
   const qualityNotes: string[] = [];
   const completionNotes: string[] = [];
+  const completionItems: ReviewNoteItem[] = [];
+  const qualityItems: ReviewNoteItem[] = [];
+  const reworkItems: ReviewNoteItem[] = [];
 
-  if (lawnPct < 70)
+  if (lawnPct < 70) {
+    const pct = Math.round(lawnPct);
     completionNotes.push(
-      `Lawn about ${Math.round(lawnPct)}% finished — major open grass still uncut.`,
+      `Lawn about ${pct}% finished — major open grass still uncut.`,
     );
-  if (edgePct < 70)
+    completionItems.push({ code: "review.lawnIncomplete", params: { pct } });
+  }
+  if (edgePct < 70) {
+    const pct = Math.round(edgePct);
     completionNotes.push(
-      `Path edge about ${Math.round(edgePct)}% finished — mowing alone does not tidy the edge.`,
+      `Path edge about ${pct}% finished — mowing alone does not tidy the edge.`,
     );
-  if (uncutHedge > 0)
+    completionItems.push({ code: "review.edgeIncomplete", params: { pct } });
+  }
+  if (uncutHedge > 0) {
     qualityNotes.push(`${uncutHedge} hedge clusters still overgrown.`);
-  if (weedsWithRoots > 0)
+    qualityItems.push({
+      code: "review.hedgeOvergrown",
+      params: { count: uncutHedge },
+    });
+  }
+  if (weedsWithRoots > 0) {
     qualityNotes.push(
       `${weedsWithRoots} weeds still have roots (top-cutting is not enough).`,
     );
-  if (damagedFlowers > 0)
+    qualityItems.push({
+      code: "review.weedsRoots",
+      params: { count: weedsWithRoots },
+    });
+  }
+  if (damagedFlowers > 0) {
     qualityNotes.push(`${damagedFlowers} ornamental flowers damaged.`);
-  if (looseDebris > 3)
+    qualityItems.push({
+      code: "review.flowersDamaged",
+      params: { count: damagedFlowers },
+    });
+  }
+  if (looseDebris > 3) {
     qualityNotes.push(`${looseDebris} debris piles still on the ground.`);
-  if (unresolvedHazards > 0)
+    qualityItems.push({
+      code: "review.debrisLoose",
+      params: { count: looseDebris },
+    });
+  }
+  if (unresolvedHazards > 0) {
     qualityNotes.push(`${unresolvedHazards} hazards still present.`);
+    qualityItems.push({
+      code: "review.hazardsPresent",
+      params: { count: unresolvedHazards },
+    });
+  }
 
   const reworkNotes: string[] = [];
   if (e.rework > 0.01) {
+    const amount = e.rework.toFixed(1);
     reworkNotes.push(
-      `You spent ${e.rework.toFixed(1)} effort units re-cleaning areas that had already been cleared and then dirtied again.`,
+      `You spent ${amount} effort units re-cleaning areas that had already been cleared and then dirtied again.`,
     );
+    reworkItems.push({ code: "review.reworkSpent", params: { amount } });
   }
   if (redirt.count > 0) {
     reworkNotes.push(
@@ -130,6 +177,11 @@ export function buildReviewSummary(
           ? " — you already cleaned some of that again."
           : " — still waiting for a second cleanup (not yet counted as spent rework)."),
     );
+    reworkItems.push({
+      code:
+        e.rework > 0.01 ? "review.redirtSpentAgain" : "review.redirtPending",
+      params: { count: redirt.count },
+    });
     reworkNotes.push(...redirt.notes.slice(0, 4));
   }
 
@@ -156,6 +208,9 @@ export function buildReviewSummary(
     qualityNotes,
     reworkNotes,
     completionNotes,
+    completionItems,
+    qualityItems,
+    reworkItems,
     learningAdvice: buildLearningAdvice(domain, {
       weedsWithRoots,
       lawnFinishedPct: lawnPct,
